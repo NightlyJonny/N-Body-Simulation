@@ -11,7 +11,7 @@ Simulation::Simulation(int argc, char** argv) {
 	char* outFileName;
 
 	// Optional terminal paramenters IN THIS ORDER!
-	DURATION = 60, FRAMESTEP = 10, NPARTICLE = 3;
+	DURATION = 60, FRAMESTEP = 10, NPARTICLE = 100;
 
 	if (argc > 1) outFileName = argv[argc - 1];
 	else {
@@ -49,23 +49,24 @@ Simulation::Simulation(int argc, char** argv) {
 		strcpy(outFileName, string(outFileName).substr(0, string(outFileName).length() - 4).c_str());
 	}
 	else {
-		// for (int p = 0; p < NPARTICLE; p++) {
-		// 	Vector2 rpVector(random(-10, 10), random(-10, 10));
-		// 	particles[p].position = rpVector;
-		// 	particles[p].velocity = rpVector.versor() * random(0, 5);
-		// 	// particles[p].radius = 0.5;
-		// 	// particles[p].mass = 10;
-		// 	// particles[p].velocity = Vector2(-rpVector.y, rpVector.x).versor() * random(0, 10);
-		// 	// particles[p].velocity = Vector2(random(-10, 10), random(-10, 10));
-		// 	// particles[p].position = Vector2(random(-80, 80), random(-50, 50));
-		// }
+		for (int p = 0; p < NPARTICLE; p++) {
+			Vector2 rpVector(random(-10, 10), random(-10, 10));
+			particles[p].position = rpVector;
+			particles[p].velocity = rpVector.versor() * random(0, 5);
+			// particles[p].radius = 0.5;
+			// particles[p].mass = 10;
+			// particles[p].velocity = Vector2(-rpVector.y, rpVector.x).versor() * random(0, 10);
+			// particles[p].velocity = Vector2(random(-10, 10), random(-10, 10));
+			// particles[p].position = Vector2(random(-80, 80), random(-50, 50));
+		}
 
-		particles[0].position = Vector2(0, 0);
-		particles[0].velocity = Vector2(0, 0);
-		particles[1].position = Vector2(-0.05, -0.05);
-		particles[1].velocity = Vector2(0, 0);
-		particles[2].position = Vector2(0.05, -0.05);
-		particles[2].velocity = Vector2(0, 1);
+		// Debug with few particles initialized one by one.
+		// particles[0].position = Vector2(0, 0);
+		// particles[0].velocity = Vector2(0, 0);
+		// particles[1].position = Vector2(-0.05, -0.05);
+		// particles[1].velocity = Vector2(0, 0);
+		// particles[2].position = Vector2(0.05, -0.05);
+		// particles[2].velocity = Vector2(0, 1);
 	}
 
 	outFile.open(outFileName, ios::out | (resuming ? ios::app : ios::trunc));
