@@ -14,6 +14,7 @@
 #define FRAMERATE 60
 #define EFACTOR 0.2
 #define KFACTOR 0 // 0.01
+#define ZEROTHRESHOLD 0.1
 using namespace std;
 
 class Simulation {
@@ -41,4 +42,5 @@ public:
 	void togglePause();
 	void stop();
 	void terminateSim();
+	string debugText = "";
 };

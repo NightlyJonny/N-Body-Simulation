@@ -61,10 +61,10 @@ Simulation::Simulation(int argc, char** argv) {
 		}
 
 		// Debug with few particles initialized one by one.
-		// particles[0].position = Vector2(0, 0);
-		// particles[0].velocity = Vector2(0, 0);
-		// particles[1].position = Vector2(-0.05, -0.05);
-		// particles[1].velocity = Vector2(0, 0);
+		// particles[0].position = Vector2(-5, 0.1);
+		// particles[0].velocity = Vector2(1, 0);
+		// particles[1].position = Vector2(5, -0.1);
+		// particles[1].velocity = Vector2(-1, 0);
 		// particles[2].position = Vector2(0.05, -0.05);
 		// particles[2].velocity = Vector2(0, 1);
 	}
@@ -99,7 +99,7 @@ void Simulation::core() {
 			integrator(particles, NPARTICLE, FRAMESTEP, 4, cs, cd);
 			
 			//It checks if the simulation is in pause, wait for 0.1 second to recheck the variable
-			while(pause){ this_thread::sleep_for(chrono::milliseconds(100)); }
+			while(pause && !stopped) { this_thread::sleep_for(chrono::milliseconds(100)); }
 
 			// Collision detection (discrete)
 			for (int p1 = 0; p1 < NPARTICLE; p1++) {
@@ -114,13 +114,25 @@ void Simulation::core() {
 						particles[p2].position = particles[p2].position - cVector / 2;
 
 						Vector2 vrVector = particles[p1].velocity - particles[p2].velocity;
-						double Jr = ((EFACTOR + 1) / (1 / particles[p1].mass + 1 / particles[p2].mass)) * (vrVector * nVersor);
+						double nvr = vrVector * nVersor;
+						double Jr = 0;
+						if (nvr < ZEROTHRESHOLD) Jr = nvr / (1 / particles[p1].mass + 1 / particles[p2].mass);
+						else Jr = ((EFACTOR + 1) / (1 / particles[p1].mass + 1 / particles[p2].mass)) * nvr;
 						particles[p1].velocity = particles[p1].velocity - nVersor * (Jr / particles[p1].mass);
 						particles[p2].velocity = particles[p2].velocity + nVersor * (Jr / particles[p2].mass);
 					}
 				}
 			}
 		}
+		double E = 0;
+		for (int p1 = 0; p1 < NPARTICLE; p1++) {
+			E += 0.5 * particles[p1].mass * pow(particles[p1].velocity.norm(), 2);
+			for (int p2 = p1+1; p2 < NPARTICLE; p2 ++) {
+				E -= particles[p1].mass * particles[p2].mass / (particles[p2].position - particles[p1].position).norm();
+			}
+		}
+		debugText = to_string(E);
+
 		saveFrame(outFile, particles, NPARTICLE);
 		frames++;
 
@@ -181,7 +193,7 @@ void Simulation::saveProgress(char* ofName, Particle* particles, int particleNum
 }
 
 double Simulation::random(double min, double max) {
-	// Useless comment so I can fold this function in Sublime Text :)
+
 	return ((double)rand() / RAND_MAX) * (max - min) + min;
 }
 
@@ -197,7 +209,6 @@ void Simulation::printProgress(int currentFrame, int totalFrames) {
 }
 
 void Simulation::terminateSim() {
-	// cout << "\n";
 	outFile.close();
 	// saveProgress(outFileName, particles, NPARTICLE, FRAMESTEP); // NOT WORKING RN!
 
@@ -219,8 +230,8 @@ int Simulation::getNParticle() const {
 	return NPARTICLE;
 }
 
-int* Simulation::getFrameRef()
-{
+int* Simulation::getFrameRef() {
+
 	return &frames;
 }
 

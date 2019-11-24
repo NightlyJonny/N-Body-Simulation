@@ -31,6 +31,11 @@ void Form::CreateMyWindow(void) {
 		timeText->labelsize(20);
 		timeText->align(FL_ALIGN_RIGHT);
 
+		debugText = new Fl_Output(border, h_est - 40 - border, 400, 40, "");
+		debugText->box(FL_UP_BOX);
+		debugText->labelsize(20);
+		debugText->align(FL_ALIGN_RIGHT);
+
 	form->end();
 	form->show();
 	scene->show();
@@ -48,10 +53,10 @@ void Form::updateTime(float nextTime) {
 	timeText->show();
 }
 
-void Form::debugText(const char* text) {
+void Form::updateDebug(string text) {
 
-	timeText->value(text);
-	timeText->show();
+	debugText->value(text.c_str());
+	debugText->show();
 }
 
 Frame* Form::getFrame(){

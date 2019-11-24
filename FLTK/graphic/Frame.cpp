@@ -3,8 +3,10 @@
 #include <string>
 
 #define MINZOOM 0.01
-#define MAXZOOM 0.75
+#define MAXZOOM 0.9
 #define SHIFTSTEP 1
+#define ROTATIONSPEED 0.1
+#define SPEED 0.3
 
 extern Form* form;
 
@@ -60,6 +62,7 @@ void Frame::draw() {
 		glTranslatef(xshift, yshift, 0);
 		drawer->draw_scene();
 		form->updateTime(*frames * 1. / FRAMERATE);
+		form->updateDebug(form->sim->debugText);
 	glPopMatrix();
 }
 
@@ -71,14 +74,27 @@ int Frame::handle(int event) {
 			break;
 		case FL_KEYDOWN:
 			keycode = Fl::event_key();
-			if (keycode == 32) form->sim->togglePause(); // Spacebar
-			if (keycode == 65363) xshift -= SHIFTSTEP; // Left arrow
-			if (keycode == 65361) xshift += SHIFTSTEP; // Right arrow
-			if (keycode == 65362) yshift -= SHIFTSTEP; // Up arrow
-			if (keycode == 65364) yshift += SHIFTSTEP; // Down arrow
+			if (keycode == 97) drawer->setAsteroids(asteroids = !asteroids); // "A"
+			if (asteroids) {
+				if (keycode == 65363) drawer->rotateSpaceship(-ROTATIONSPEED);// Left arrow
+				if (keycode == 65361) drawer->rotateSpaceship(ROTATIONSPEED); // Right arrow
+				if (keycode == 65362) drawer->moveSpaceship(SPEED); // Up arrow
+				if (keycode == 32) drawer->shooting = true; // Spacebar
+				else drawer->shooting = false;
+			}
+			else {
+				drawer->shooting = false;
+				if (keycode == 65363) xshift -= SHIFTSTEP; // Left arrow
+				if (keycode == 65361) xshift += SHIFTSTEP; // Right arrow
+				if (keycode == 65362) yshift -= SHIFTSTEP; // Up arrow
+				if (keycode == 65364) yshift += SHIFTSTEP; // Down arrow
+				if (keycode == 32) form->sim->togglePause(); // Spacebar
+			}
 			return 1;
 		default:
 			break;
+
+		drawer->shooting = false;
 		redraw();
 	}
 	

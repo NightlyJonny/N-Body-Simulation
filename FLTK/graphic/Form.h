@@ -9,6 +9,7 @@
 #include <FL/Fl_Gl_Window.H>
 #include <FL/Fl_Multiline_Output.H>
 #include <FL/Fl_Text_Display.H>
+#include <string>
 #include "Frame.h"
 
 class Form{
@@ -17,6 +18,7 @@ private:
 	static Frame* scene;
 
 	Fl_Output* timeText;
+	Fl_Output* debugText;
 
 	int floatToInt(float num, int afterComma) { return round(num * pow(10, afterComma)); }
 	void CreateMyWindow();
@@ -25,7 +27,7 @@ public:
 	Form(Simulation*);
 	
 	void updateTime(float nextTime);
-	void debugText(const char* text);
+	void updateDebug(string text);
 
 	Frame* getFrame();
 };
