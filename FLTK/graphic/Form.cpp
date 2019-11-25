@@ -1,8 +1,5 @@
 #include "Form.h"
 
-#define SCREEN_WIDTH  1200
-#define SCREEN_HEIGHT 800
-
 //Declaration of static members
 Fl_Window* Form::form;
 Frame* Form::scene;
@@ -26,12 +23,12 @@ void Form::CreateMyWindow(void) {
 
 		scene = new Frame(border, border, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 
-		timeText = new Fl_Output(border + SCREEN_WIDTH / 2 - 100, h_est - 40 - border, 200, 40, "");
+		timeText = new Fl_Output(200, h_est - 40 - border, 150, 40, "");
 		timeText->box(FL_UP_BOX);
 		timeText->labelsize(20);
 		timeText->align(FL_ALIGN_RIGHT);
 
-		debugText = new Fl_Output(border, h_est - 40 - border, 400, 40, "");
+		debugText = new Fl_Output(border, h_est - 40 - border, 150, 40, "");
 		debugText->box(FL_UP_BOX);
 		debugText->labelsize(20);
 		debugText->align(FL_ALIGN_RIGHT);

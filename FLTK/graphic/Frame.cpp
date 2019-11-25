@@ -57,6 +57,14 @@ void Frame::draw() {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	//This move the scene is the mouse right button is pressed
+	if(middleDown){
+		float degree = -atan2(SCREEN_HEIGHT/2 - Fl::event_y(), SCREEN_WIDTH/2 - Fl::event_x());
+		float ray = pow(pow(SCREEN_HEIGHT/2 - Fl::event_y(), 2) + pow(SCREEN_WIDTH/2 - Fl::event_x(), 2), 1./2);
+		xshift += cos(degree) * ray / 400;
+		yshift += sin(degree) * ray / 400;
+	}
+
 	glPushMatrix();
 		glScalef(zoom, zoom, zoom);
 		glTranslatef(xshift, yshift, 0);
@@ -67,11 +75,14 @@ void Frame::draw() {
 }
 
 int Frame::handle(int event) {
+
+	float degree = 0;
 	switch (event)
 	{
 		case FL_MOUSEWHEEL:
 			if ((zoom - Fl::event_dy() * 0.01 < MAXZOOM) && (zoom - Fl::event_dy() * 0.01 > MINZOOM)) zoom -= Fl::event_dy() * 0.01;
 			break;
+		
 		case FL_KEYDOWN:
 			keycode = Fl::event_key();
 			if (keycode == 97) drawer->setAsteroids(asteroids = !asteroids); // "A"
@@ -90,7 +101,15 @@ int Frame::handle(int event) {
 				if (keycode == 65364) yshift += SHIFTSTEP; // Down arrow
 				if (keycode == 32) form->sim->togglePause(); // Spacebar
 			}
-			return 1;
+			break;
+		case FL_PUSH:
+			if(Fl::event_button() == FL_RIGHT_MOUSE)
+				this->middleDown = true;
+			break;
+		case FL_RELEASE:
+			if(Fl::event_button() == FL_RIGHT_MOUSE)
+				this->middleDown = false;
+			break;
 		default:
 			break;
 

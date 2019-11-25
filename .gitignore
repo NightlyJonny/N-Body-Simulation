@@ -1,0 +1,5 @@
+*.o
+./FLTK/compiled
+./FLTK/Main
+./FLTK/Outputfile.txt
+./FLTK/.vscode

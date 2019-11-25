@@ -1,6 +1,9 @@
 #ifndef FRAME_HPP
 #define FRAME_HPP
 
+#define SCREEN_WIDTH  1200
+#define SCREEN_HEIGHT 800
+
 #include <FL/Fl.H>
 #include <FL/Fl_Gl_Window.H>
 #include <FL/gl.h>
@@ -18,6 +21,8 @@ private:
 	int* frames;
 	int keycode;
 	bool asteroids = false;
+
+	bool middleDown = false;
 
 	int handle(int);
 	void draw();
