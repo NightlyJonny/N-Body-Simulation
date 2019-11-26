@@ -2,20 +2,20 @@
 #define PARTICLE_H
 
 #include "Vector2.h"
+#define PI 3.14159265359
 
 class Particle {
 public:
-	double mass, radius;
+	double mass, radius, omega, angle;
 	Vector2 position, velocity;
 	Particle ();
 	Particle (double, double);
-	Particle (double, double, Vector2, Vector2);
+	Particle (double, double, Vector2, Vector2, double, double);
 	~Particle ();
 
-	double getMass () { return mass; };
-	double getRadius () { return radius; };
 	void positionStep (double, Vector2&);
 	void velocityStep (double, Vector2&);
+	void angularStep (double);
 };
 
 #endif /* PARTICLE_H */

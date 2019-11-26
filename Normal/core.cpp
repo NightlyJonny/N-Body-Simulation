@@ -92,6 +92,8 @@ void integrator (Particle* particles, int NPARTICLE, int FRAMESTEP, int N, doubl
 			for (int p = 0; p < NPARTICLE; ++p) {
 				particles[p].velocityStep(coefc[n] * t, force[p]);
 				particles[p].positionStep(coefd[n] * t, force[p]);
+				particles[p].angularStep(t/N);
+
 				// force[p] = particles[p].position * -KFACTOR;
 				force[p].x = force[p].y = 0;
 			}

@@ -19,7 +19,7 @@ private:
 
 public:
 	Drawer(Simulation* sim);
-	void drawFilledCircle(GLfloat x, GLfloat y, GLfloat radius);
+	void drawFilledCircle(GLfloat x, GLfloat y, GLfloat radius, GLfloat angle);
 	void draw_scene();
 
 	void setAsteroids(bool active);

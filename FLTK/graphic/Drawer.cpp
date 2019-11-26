@@ -6,7 +6,7 @@ Drawer::Drawer(Simulation* sim) {
 	this->NParticle = sim->getNParticle();
 }
 
-void Drawer::drawFilledCircle(GLfloat x, GLfloat y, GLfloat radius) {
+void Drawer::drawFilledCircle(GLfloat x, GLfloat y, GLfloat radius, GLfloat angle) {
 	const int triangleAmount = 40; //# of triangles used to draw circle
 
 	glBegin(GL_TRIANGLE_FAN);
@@ -18,6 +18,12 @@ void Drawer::drawFilledCircle(GLfloat x, GLfloat y, GLfloat radius) {
 				y + (radius * sin(i * 2*PI / triangleAmount))
 			);
 		}
+	glEnd();
+
+	glBegin(GL_LINES);
+		glColor3f(1.0, 0, 0);
+		glVertex2f(x, y);
+		glVertex2f( x + radius*cos(angle), y + radius*sin(angle) );
 	glEnd();
 }
 
@@ -62,7 +68,7 @@ void Drawer::shoot() {
 void Drawer::draw_scene() {
 	for (int i = 0; i < NParticle; i++) {
 		Vector2 pos = particle[i].position;
-		drawFilledCircle(pos.getx(), pos.gety(), particle[i].radius);
+		drawFilledCircle(pos.getx(), pos.gety(), particle[i].radius, particle[i].angle);
 	}
 	if (asteroids) drawSpaceship();
 	if (shooting) shoot();

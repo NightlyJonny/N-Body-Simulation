@@ -53,18 +53,23 @@ Simulation::Simulation(int argc, char** argv) {
 			Vector2 rpVector(random(-10, 10), random(-10, 10));
 			particles[p].position = rpVector;
 			particles[p].velocity = rpVector.versor() * random(0, 5);
-			// particles[p].radius = 0.5;
-			// particles[p].mass = 10;
+			particles[p].omega = random(0, 1);
+			particles[p].radius = 0.1;
+			particles[p].mass = 10;
 			// particles[p].velocity = Vector2(-rpVector.y, rpVector.x).versor() * random(0, 10);
 			// particles[p].velocity = Vector2(random(-10, 10), random(-10, 10));
 			// particles[p].position = Vector2(random(-80, 80), random(-50, 50));
 		}
 
 		// Debug with few particles initialized one by one.
-		// particles[0].position = Vector2(-5, 0.1);
-		// particles[0].velocity = Vector2(1, 0);
-		// particles[1].position = Vector2(5, -0.1);
-		// particles[1].velocity = Vector2(-1, 0);
+		// particles[0].position = Vector2(-5, 0.22);
+		// particles[0].velocity = Vector2(5, 0);
+		// particles[0].radius = 0.5;
+		// particles[0].mass = 10;
+		// particles[1].position = Vector2(5, -0.22);
+		// particles[1].velocity = Vector2(-5, 0);
+		// particles[1].radius = 0.5;
+		// particles[1].mass = 10;
 		// particles[2].position = Vector2(0.05, -0.05);
 		// particles[2].velocity = Vector2(0, 1);
 	}
@@ -115,11 +120,29 @@ void Simulation::core() {
 
 						Vector2 vrVector = particles[p1].velocity - particles[p2].velocity;
 						double nvr = vrVector * nVersor;
-						double Jr = 0;
-						if (nvr < ZEROTHRESHOLD) Jr = nvr / (1 / particles[p1].mass + 1 / particles[p2].mass);
-						else Jr = ((EFACTOR + 1) / (1 / particles[p1].mass + 1 / particles[p2].mass)) * nvr;
-						particles[p1].velocity = particles[p1].velocity - nVersor * (Jr / particles[p1].mass);
-						particles[p2].velocity = particles[p2].velocity + nVersor * (Jr / particles[p2].mass);
+						if (nvr < ZEROTHRESHOLD) {
+							double m1 = particles[p1].mass, m2 = particles[p2].mass;
+							Vector2 v1 = particles[p1].velocity, v2 = particles[p2].velocity;
+							double w1 = particles[p1].omega, w2 = particles[p2].omega;
+							double r1 = particles[p1].radius, r2 = particles[p2].radius;
+
+							particles[p1].velocity = (v1*m1 + v2*m2) / (m1 + m2);
+							particles[p1].mass += m2;
+							particles[p1].radius = Vector2(particles[p1].radius, particles[p2].radius).norm();
+							particles[p1].omega = (m1* r1*r1 * w1 + m2* r2*r2 * w2 + 2 * m2 * (vrVector.y*nVersor.x - vrVector.x*nVersor.y)) / (particles[p1].mass * particles[p1].radius*particles[p1].radius);
+
+							Vector2 rpVector(random(-10, 10), random(-10, 10));
+							particles[p2].position = rpVector;
+							particles[p2].velocity = rpVector.versor() * random(0, 5);
+							particles[p2].omega = random(0, 1);
+							particles[p2].radius = 0.1;
+							particles[p2].mass = 10;
+						}
+						else {
+							double Jr = ((EFACTOR + 1) / (1 / particles[p1].mass + 1 / particles[p2].mass)) * nvr;
+							particles[p1].velocity = particles[p1].velocity - nVersor * (Jr / particles[p1].mass);
+							particles[p2].velocity = particles[p2].velocity + nVersor * (Jr / particles[p2].mass);
+						}
 					}
 				}
 			}
@@ -127,11 +150,13 @@ void Simulation::core() {
 		double E = 0;
 		for (int p1 = 0; p1 < NPARTICLE; p1++) {
 			E += 0.5 * particles[p1].mass * pow(particles[p1].velocity.norm(), 2);
+			E += 0.25 * particles[p1].mass * pow(particles[p1].omega * particles[p1].radius, 2);
 			for (int p2 = p1+1; p2 < NPARTICLE; p2 ++) {
 				E -= particles[p1].mass * particles[p2].mass / (particles[p2].position - particles[p1].position).norm();
 			}
 		}
 		debugText = to_string(E);
+		// debugText = to_string(particles[0].omega);
 
 		saveFrame(outFile, particles, NPARTICLE);
 		frames++;
@@ -162,7 +187,10 @@ void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, i
 		for (int p = 0; p < NPARTICLE; ++p) {
 			particles[p].velocityStep(coefc[n] * t, force[p]);
 			particles[p].positionStep(coefd[n] * t, force[p]);
-			force[p] = particles[p].position * -KFACTOR;
+			particles[p].angularStep(t/N);
+
+			// force[p] = particles[p].position * -KFACTOR;
+			force[p].x = force[p].y = 0;
 		}
 	}
 
