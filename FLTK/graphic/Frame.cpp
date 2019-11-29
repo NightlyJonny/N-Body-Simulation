@@ -2,7 +2,7 @@
 #include "Form.h"
 #include <string>
 
-#define MINZOOM 0.01
+#define MINZOOM 0.001
 #define MAXZOOM 0.9
 #define SHIFTSTEP 1
 #define ROTATIONSPEED 0.1
@@ -39,10 +39,10 @@ void Frame::draw() {
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 
 		glClearColor(0.0, 0.0, 0.0, 1);                        // Turn the background color black
-		glViewport(0, 0, w(), h());                      // Make our viewport the whole window
+		glViewport(0, 0, pixel_w(), pixel_h());                      // Make our viewport the whole window
 		glMatrixMode(GL_PROJECTION);                           // Select The Projection Matrix
 		glLoadIdentity();                                      // Reset The Projection Matrix
-		gluPerspective(45.0f, w() / h(), 1, 150.0f);
+		gluPerspective(45.0f, pixel_w() / pixel_h(), 1, 150.0f);
 		glMatrixMode(GL_MODELVIEW);                            // Select The Modelview Matrix
 		glLoadIdentity();                                      // Reset The Modelview Matrix
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);    // Clear The Screen And The Depth Buffer
@@ -59,8 +59,8 @@ void Frame::draw() {
 
 	//This move the scene is the mouse right button is pressed
 	if(middleDown){
-		float degree = -atan2(SCREEN_HEIGHT/2 - Fl::event_y(), SCREEN_WIDTH/2 - Fl::event_x());
-		float ray = pow(pow(SCREEN_HEIGHT/2 - Fl::event_y(), 2) + pow(SCREEN_WIDTH/2 - Fl::event_x(), 2), 1./2);
+		float degree = -atan2(pixel_h()/2 - Fl::event_y(), pixel_w()/2 - Fl::event_x());
+		float ray = pow(pow(pixel_h()/2 - Fl::event_y(), 2) + pow(pixel_w()/2 - Fl::event_x(), 2), 1./2);
 		xshift += cos(degree) * ray / 400;
 		yshift += sin(degree) * ray / 400;
 	}

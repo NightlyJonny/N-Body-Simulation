@@ -1,8 +1,8 @@
 #ifndef FRAME_HPP
 #define FRAME_HPP
 
-#define SCREEN_WIDTH  700
-#define SCREEN_HEIGHT 700
+#define SCREEN_HEIGHT 600
+#define SCREEN_WIDTH 600
 
 #include <FL/Fl.H>
 #include <FL/Fl_Gl_Window.H>

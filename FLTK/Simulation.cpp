@@ -10,9 +10,6 @@ Simulation::Simulation(int argc, char** argv) {
 	signal(SIGINT, sigHandler);
 	char* outFileName;
 
-	// Optional terminal paramenters IN THIS ORDER!
-	DURATION = 60, FRAMESTEP = 10, NPARTICLE = 100;
-
 	if (argc > 1) outFileName = argv[argc - 1];
 	else {
 		cerr << "You must specify an output file.\nUsage: ./core [DURATION] [FRAMESTEP] [NPARTICLE] \"OutputFile.txt\"\nor\n./core \"ProgressData.dat\"" << endl;
@@ -50,15 +47,7 @@ Simulation::Simulation(int argc, char** argv) {
 	}
 	else {
 		for (int p = 0; p < NPARTICLE; p++) {
-			Vector2 rpVector(random(-10, 10), random(-10, 10));
-			particles[p].position = rpVector;
-			particles[p].velocity = rpVector.versor() * random(0, 5);
-			particles[p].omega = random(0, 1);
-			particles[p].radius = 0.1;
-			particles[p].mass = 10;
-			// particles[p].velocity = Vector2(-rpVector.y, rpVector.x).versor() * random(0, 10);
-			// particles[p].velocity = Vector2(random(-10, 10), random(-10, 10));
-			// particles[p].position = Vector2(random(-80, 80), random(-50, 50));
+			particles[p].initialize();
 		}
 
 		// Debug with few particles initialized one by one.
@@ -79,7 +68,7 @@ Simulation::Simulation(int argc, char** argv) {
 		cerr << "Error opening output file." << endl;
 		return;
 	}
-	outFile << particles[0].radius << "\n";	
+	outFile << NPARTICLE << "\n";
 }
 
 void Simulation::core() {
@@ -115,8 +104,8 @@ void Simulation::core() {
 
 						// Collision response
 						Vector2 cVector = nVersor * 1.0001 * (particles[p1].radius + particles[p2].radius) - dVector;
-						particles[p1].position = particles[p1].position + cVector / 2;
-						particles[p2].position = particles[p2].position - cVector / 2;
+						particles[p1].position = particles[p1].position + cVector * (particles[p1].mass / (particles[p1].mass + particles[p2].mass));
+						particles[p2].position = particles[p2].position - cVector * (particles[p2].mass / (particles[p1].mass + particles[p2].mass));
 
 						Vector2 vrVector = particles[p1].velocity - particles[p2].velocity;
 						double nvr = vrVector * nVersor;
@@ -126,17 +115,13 @@ void Simulation::core() {
 							double w1 = particles[p1].omega, w2 = particles[p2].omega;
 							double r1 = particles[p1].radius, r2 = particles[p2].radius;
 
+							particles[p1].position = (particles[p1].position*m1 + particles[p2].position*m2) / (m1 + m2);
 							particles[p1].velocity = (v1*m1 + v2*m2) / (m1 + m2);
 							particles[p1].mass += m2;
 							particles[p1].radius = Vector2(particles[p1].radius, particles[p2].radius).norm();
 							particles[p1].omega = (m1* r1*r1 * w1 + m2* r2*r2 * w2 + 2 * m2 * (vrVector.y*nVersor.x - vrVector.x*nVersor.y)) / (particles[p1].mass * particles[p1].radius*particles[p1].radius);
 
-							Vector2 rpVector(random(-10, 10), random(-10, 10));
-							particles[p2].position = rpVector;
-							particles[p2].velocity = rpVector.versor() * random(0, 5);
-							particles[p2].omega = random(0, 1);
-							particles[p2].radius = 0.1;
-							particles[p2].mass = 10;
+							particles[p2].initialize();
 						}
 						else {
 							double Jr = ((EFACTOR + 1) / (1 / particles[p1].mass + 1 / particles[p2].mass)) * nvr;
@@ -155,8 +140,6 @@ void Simulation::core() {
 				E -= particles[p1].mass * particles[p2].mass / (particles[p2].position - particles[p1].position).norm();
 			}
 		}
-		debugText = to_string(E);
-		// debugText = to_string(particles[0].omega);
 
 		saveFrame(outFile, particles, NPARTICLE);
 		frames++;
@@ -199,7 +182,7 @@ void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, i
 
 void Simulation::saveFrame(ofstream& outFile, Particle* particles, int particleNumber) {
 	for (int i = 0; i < particleNumber; i++) {
-		outFile << particles[i].position.x << "," << particles[i].position.y << "\t";
+		outFile << particles[i].radius << ":" << particles[i].position.x << "," << particles[i].position.y << "-" << particles[i].angle << "\t";
 	}
 	outFile << "\n";
 }

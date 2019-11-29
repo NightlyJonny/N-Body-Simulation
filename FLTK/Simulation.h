@@ -9,6 +9,7 @@
 #include <cstring>
 #include <thread>
 #include <chrono>
+#include <climits>
 #include "Particle.h"
 #include "Vector2.h"
 #define FRAMERATE 60
@@ -22,7 +23,7 @@ class Simulation {
 private:
 	ofstream outFile;
 	Particle* particles;
-	int DURATION, FRAMESTEP, NPARTICLE;
+	unsigned int DURATION = UINT_MAX, FRAMESTEP = 10, NPARTICLE = 100;
 	int frames = 0;
 	bool pause = false;
 	const int targetDt = 1000000 / FRAMERATE;
@@ -42,5 +43,6 @@ public:
 	void togglePause();
 	void stop();
 	void terminateSim();
+	unsigned int getDuration() { return (DURATION < UINT_MAX ? DURATION : 0); }
 	string debugText = "";
 };
