@@ -17,7 +17,10 @@ using namespace std;
 
 void saveFrame (ofstream& outFile, Particle* particles, int particleNumber) {
 	for (int i = 0; i < particleNumber; i++) {
-		outFile << particles[i].radius << ":" << particles[i].position.x << "," << particles[i].position.y << ";" << particles[i].angle << "\t";
+		if (particles[i].active)
+			outFile << particles[i].radius << ":" << particles[i].position.x << "," << particles[i].position.y << ";" << particles[i].angle << "\t";
+		else
+			outFile << "0" << "\t";
 	}
 	outFile << "\n";
 }
@@ -71,7 +74,9 @@ void integrator (Particle* particles, int NPARTICLE, int FRAMESTEP, int N, doubl
 
 	for (int n = 0; n < N; n ++) {
 		for (int p1 = 0; p1 < NPARTICLE; p1++) {
+			if (!particles[p1].active) continue;
 			for (int p2 = p1+1; p2 < NPARTICLE; p2++) {
+				if (!particles[p2].active) continue;
 				Vector2 dVector = particles[p2].position - particles[p1].position;
 				double distance = dVector.norm();
 				Vector2 curForce = dVector.versor() * particles[p1].mass * particles[p2].mass / pow(distance, 2);
@@ -80,6 +85,7 @@ void integrator (Particle* particles, int NPARTICLE, int FRAMESTEP, int N, doubl
 			}
 		}
 		for (int p = 0; p < NPARTICLE; ++p) {
+			if (!particles[p].active) continue;
 			particles[p].velocityStep(coefc[n] * t, force[p]);
 			particles[p].positionStep(coefd[n] * t, force[p]);
 			particles[p].angularStep(t/N);
@@ -143,13 +149,6 @@ int main(int argc, char** argv) {
 			for (int p = 0; p < NPARTICLE; p++) {
 				particles[p].initialize();
 			}
-
-			// particles[0].position = Vector2(0, 0);
-			// particles[0].velocity = Vector2(0, 0);
-			// particles[0].mass = 1000;
-
-			// particles[1].position = Vector2(0, 10);
-			// particles[1].velocity = Vector2(10, 0);
 		}
 
 		outFile.open(outFileName, ios::out | (resuming ? ios::app : ios::trunc));
@@ -181,7 +180,9 @@ int main(int argc, char** argv) {
 
 			// Collision detection (discrete)
 			for (int p1 = 0; p1 < NPARTICLE; p1++) {
+				if (!particles[p1].active) continue;
 				for (int p2 = p1 + 1; p2 < NPARTICLE; p2++) {
+					if (!particles[p2].active) continue;
 					Vector2 dVector = particles[p1].position - particles[p2].position;
 					Vector2 nVersor = dVector.versor();
 					if (dVector.norm() <= particles[p1].radius + particles[p2].radius) {
@@ -193,7 +194,7 @@ int main(int argc, char** argv) {
 
 						Vector2 vrVector = particles[p1].velocity - particles[p2].velocity;
 						double nvr = vrVector * nVersor;
-						if (nvr < ZEROTHRESHOLD) {
+						if (abs(nvr) < ZEROTHRESHOLD) {
 							double m1 = particles[p1].mass, m2 = particles[p2].mass;
 							Vector2 v1 = particles[p1].velocity, v2 = particles[p2].velocity;
 							double w1 = particles[p1].omega, w2 = particles[p2].omega;
@@ -205,7 +206,7 @@ int main(int argc, char** argv) {
 							particles[p1].radius = Vector2(particles[p1].radius, particles[p2].radius).norm();
 							particles[p1].omega = (m1* r1*r1 * w1 + m2* r2*r2 * w2 + 2 * m2 * (vrVector.y*nVersor.x - vrVector.x*nVersor.y)) / (particles[p1].mass * particles[p1].radius*particles[p1].radius);
 
-							particles[p2].initialize();
+							particles[p2].active = false;
 						}
 						else {
 							double Jr = ((EFACTOR + 1) / (1 / particles[p1].mass + 1 / particles[p2].mass)) * nvr;

@@ -67,8 +67,9 @@ void Drawer::shoot() {
 
 void Drawer::draw_scene() {
 	for (int i = 0; i < NParticle; i++) {
+		if (!particle[i].active) continue;
 		Vector2 pos = particle[i].position;
-		drawFilledCircle(pos.getx(), pos.gety(), particle[i].radius, particle[i].angle);
+		drawFilledCircle(pos.x, pos.y, particle[i].radius, particle[i].angle);
 	}
 	if (asteroids) drawSpaceship();
 	if (shooting) shoot();

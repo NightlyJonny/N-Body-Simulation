@@ -2,21 +2,25 @@
 #include <fstream>
 #include <cmath>
 #include <signal.h>
-#define FRAMERATE 60
+#define FRAMERATE 30
 #define EFACTOR 0.2
 #define KFACTOR 0 // 0.005
 #define SCHEMEORDER 4
+#define ZEROTHRESHOLD 0.2
 using namespace std;
 
-void saveFrame (ofstream& outFile, float* Px, float* Py, int particleNumber) {
-	for (int i = 0; i < particleNumber; i ++) {
-		outFile << Px[i] << "," << Py[i] << "\t";
+void saveFrame (ofstream& outFile, float* radius, float* Px, float* Py, float* angle, int particleNumber, bool* active) {
+	for (int i = 0; i < particleNumber; i++) {
+		if (active[i])
+			outFile << radius[i] << ":" << Px[i] << "," << Py[i] << ";" << angle[i] << "\t";
+		else
+			outFile << "0" << "\t";
 	}
 	outFile << "\n";
 }
 
 float random (float min, float max) {
-	// Useless comment so I can fold this function in Sublime Text :)
+
 	return ((float)rand() / RAND_MAX) * (max-min) + min;
 }
 
@@ -58,59 +62,86 @@ void sigHandler (int sig) {
 	stopped = true;
 }
 
-__global__ void computeForces (float* Fx, float* Fy, float* Px, float* Py, float* mass, int NPARTICLE) {
+__global__ void computeForces (float* Fx, float* Fy, float* Px, float* Py, float* mass, int NPARTICLE, bool* active) {
 	int p = blockIdx.x * blockDim.x + threadIdx.x;
 	if (p < NPARTICLE*NPARTICLE) {
 		int p1 = p / NPARTICLE, p2 = p % NPARTICLE;
-		if (p1 != p2) {
+		if ((p2 < NPARTICLE) && (p2 > p1) && active[p1] && active[p2]) {
 			float Dx = Px[p2]-Px[p1], Dy = Py[p2]-Py[p1];
 			float distance2 = Dx*Dx + Dy*Dy, distance = sqrtf(distance2);
 			float curFx = (Dx/distance) * mass[p1] * mass[p2] / distance2, curFy = (Dy/distance) * mass[p1] * mass[p2] / distance2;
 			atomicAdd(Fx+p1, curFx);
 			atomicAdd(Fy+p1, curFy);
+			atomicAdd(Fx+p2, -curFx);
+			atomicAdd(Fy+p2, -curFy);
 		}
 	}
 }
 
-__global__ void moveSystem (float* Fx, float* Fy, float* Px, float* Py, float* Vx, float* Vy, float* mass, float dtv, float dtp, int NPARTICLE) {
+__global__ void moveSystem (float* Fx, float* Fy, float* Px, float* Py, float* Vx, float* Vy, float* angle, float* omega, float* mass, float dtv, float dtp, float dta, int NPARTICLE, bool* active) {
 	int p = blockIdx.x * blockDim.x + threadIdx.x;
-	if (p < NPARTICLE) {
+	if (p < NPARTICLE && active[p]) {
 		atomicAdd(Vx+p, (Fx[p]/mass[p]) * dtv);
 		atomicAdd(Vy+p, (Fy[p]/mass[p]) * dtv);
 		atomicAdd(Px+p, Vx[p] * dtp);
 		atomicAdd(Py+p, Vy[p] * dtp);
-		// atomicAdd(Px+p, Vx[p] * dt + (Fx[p]/mass[p]) * dt*dt);
-		// atomicAdd(Py+p, Vy[p] * dt + (Fy[p]/mass[p]) * dt*dt);
+		atomicAdd(angle+p, omega[p] * dta);
 		Fx[p] = -KFACTOR * Px[p];
 		Fy[p] = -KFACTOR * Py[p];
 	}
 }
 
-__global__ void computeCollisions (float* Px, float* Py, float* Vx, float* Vy, float* Sx, float* Sy, float* Jx, float* Jy,float* mass, float* radius, int NPARTICLE) {
+__global__ void computeCollisions (float* Px, float* Py, float* Vx, float* Vy, float* omega, float* Sx, float* Sy, float* Jx, float* Jy,float* mass, float* radius, int NPARTICLE, bool* active) {
 	int p = blockIdx.x * blockDim.x + threadIdx.x;
 	if (p < NPARTICLE*NPARTICLE) {
 		int p1 = p / NPARTICLE, p2 = p % NPARTICLE;
-		if (p1 != p2) {
+		if ((p2 < NPARTICLE) && (p2 > p1) && active[p1] && active[p2]) {
 			float Dx = Px[p1] - Px[p2], Dy = Py[p1] - Py[p2];
 			float distance2 = Dx*Dx + Dy*Dy, distance = sqrt(distance2);
 			float Nx = Dx/distance, Ny = Dy/distance;
+			float Vrx = Vx[p1] - Vx[p2], Vry = Vy[p1] - Vy[p2];
+			float nvr = Vrx*Nx + Vry*Ny;
 			if (distance <= radius[p1] + radius[p2]) {
 
-				float cSx = Nx * 1.0001*(radius[p1] + radius[p2]) - Dx, cSy = Ny * 1.0001*(radius[p1] + radius[p2]) - Dy;
-				atomicAdd(Sx+p1, cSx / 2);
-				atomicAdd(Sy+p1, cSy / 2);
+				if (abs(nvr) > ZEROTHRESHOLD) {
 
-				float cJr = ((EFACTOR+1)/(1/mass[p1] + 1/mass[p2])) * ((Vx[p1]-Vx[p2])*Nx + (Vy[p1]-Vy[p2])*Ny);
-				atomicAdd(Jx+p1, -Nx * (cJr/mass[p1]));
-				atomicAdd(Jy+p1, -Ny * (cJr/mass[p1]));
+					// Collision
+					float cSx = Nx * 1.0001*(radius[p1] + radius[p2]) - Dx, cSy = Ny * 1.0001*(radius[p1] + radius[p2]) - Dy;
+					atomicAdd( Sx+p1, cSx * mass[p1] / (mass[p1] + mass[p2]) );
+					atomicAdd( Sy+p1, cSy * mass[p1] / (mass[p1] + mass[p2]) );
+					atomicAdd( Sx+p2, -cSx * mass[p2] / (mass[p1] + mass[p2]) );
+					atomicAdd( Sy+p2, -cSy * mass[p2] / (mass[p1] + mass[p2]) );
+
+					float cJr = ((EFACTOR+1)/(1/mass[p1] + 1/mass[p2])) * nvr;
+					atomicAdd( Jx+p1, -Nx * (cJr/mass[p1]) );
+					atomicAdd( Jy+p1, -Ny * (cJr/mass[p1]) );
+					atomicAdd( Jx+p2, Nx * (cJr/mass[p2]) );
+					atomicAdd( Jy+p2, Ny * (cJr/mass[p2]) );
+				}
+				else {
+					// Fusion
+					Px[p1] = (Px[p1] * mass[p1] + Px[p2] * mass[p2]) / (mass[p1] + mass[p2]);
+					Py[p1] = (Py[p1] * mass[p1] + Py[p2] * mass[p2]) / (mass[p1] + mass[p2]);
+
+					Vx[p1] = (Vx[p1] * mass[p1] + Vx[p2] * mass[p2]) / (mass[p1] + mass[p2]);
+					Vy[p1] = (Vy[p1] * mass[p1] + Vy[p2] * mass[p2]) / (mass[p1] + mass[p2]);
+
+					float newRadius = sqrt(radius[p1]*radius[p1] + radius[p2]*radius[p2]);
+					omega[p1] = (mass[p1] * radius[p1]*radius[p1] * omega[p1] + mass[p2]* radius[p2]*radius[p2] * omega[p2] + 2 * mass[p2] * (Vry * Nx - Vrx * Ny)) / (mass[p1] * newRadius);
+					atomicAdd(mass+p1, mass[p2]);
+					radius[p1] = newRadius;
+
+					active[p2] = false;
+				}
+
 			}
 		}
 	}
 }
 
-__global__ void collisionResponse (float* Px, float* Py, float* Vx, float* Vy, float* Sx, float* Sy, float* Jx, float* Jy, int NPARTICLE) {
+__global__ void collisionResponse (float* Px, float* Py, float* Vx, float* Vy, float* Sx, float* Sy, float* Jx, float* Jy, int NPARTICLE, bool* active) {
 	int p = blockIdx.x * blockDim.x + threadIdx.x;
-	if (p < NPARTICLE) {
+	if (p < NPARTICLE && active[p]) {
 		Px[p] += Sx[p];
 		Py[p] += Sy[p];
 		Vx[p] += Jx[p];
@@ -138,19 +169,23 @@ int main(int argc, char** argv) {
 		if (argc > 2) DURATION = stoi(argv[argc-2]);
 	}
 	
-	float *mass, *radius, *Px, *Py, *Vx, *Vy, *Fx, *Fy, *Sx, *Sy, *Jx, *Jy;
+	float *mass, *radius, *Px, *Py, *Vx, *Vy, *angle, *omega, *Fx, *Fy, *Sx, *Sy, *Jx, *Jy;
+	bool *active;
 	cudaMallocManaged(&mass, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&radius, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&Px, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&Py, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&Vx, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&Vy, NPARTICLE*sizeof(float));
+	cudaMallocManaged(&angle, NPARTICLE*sizeof(float));
+	cudaMallocManaged(&omega, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&Fx, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&Fy, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&Sx, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&Sy, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&Jx, NPARTICLE*sizeof(float));
 	cudaMallocManaged(&Jy, NPARTICLE*sizeof(float));
+	cudaMallocManaged(&active, NPARTICLE*sizeof(bool));
 
 	// Initialization objects
 	if (resuming) {
@@ -183,15 +218,21 @@ int main(int argc, char** argv) {
 	}
 	else {
 		for (int p = 0; p < NPARTICLE; p++) {
-			mass[p] = 10;
-			radius[p] = 0.5;
-			float rx = random(-200, 200), ry = random(-200, 200), rv = random(0, 20);
+			active[p] = true;
+			angle[p] = 0;
+			omega[p] = random(-1, 1);
+			mass[p] = random(0.5, 2);
+			radius[p] = random(0.1, 0.2);
+			float rx = random(-100, 100), ry = random(-100, 100), rvn = random(-5, 3), rvt = random(0, 10);
 			Px[p] = rx;
 			Py[p] = ry;
-			float rxn = sqrt(rx*rx + ry*ry);
-			Vx[p] = (rx/rxn) * rv;
-			Vy[p] = (ry/rxn) * rv;
-			Fx[p] = Fy[p] = 0;
+			float rn = sqrt(rx*rx + ry*ry);
+			Vx[p] = (rx/rn) * rvn - (ry/rn) * rvt;
+			Vy[p] = (ry/rn) * rvn + (rx/rn) * rvt;
+
+			Fx[p] = -KFACTOR * Px[p];
+			Fy[p] = -KFACTOR * Py[p];
+			Sx[p] = Sy[p] = Jx[p] = Jy[p] = 0;
 		}
 	}
 
@@ -200,7 +241,7 @@ int main(int argc, char** argv) {
 		cerr << "Error opening output file." << endl;
 		return 2;
 	}
-	if (!resuming) outFile << radius[0] << "\n";
+	if (!resuming) outFile << NPARTICLE << "\n";
 
 	float cs[] = {0, 0, 0, 0};
 	float cd[] = {0, 0, 0, 0};
@@ -225,27 +266,27 @@ int main(int argc, char** argv) {
 		for (int i = 0; i < FRAMESTEP; i ++) {
 
 			for (int s = 0; s < SCHEMEORDER; s ++) {
-				computeForces <<<(NPARTICLE*NPARTICLE+255)/256, 256>>> (Fx, Fy, Px, Py, mass, NPARTICLE);
+				computeForces <<<(NPARTICLE*NPARTICLE+255)/256, 256>>> (Fx, Fy, Px, Py, mass, NPARTICLE, active);
 				cudaDeviceSynchronize();
 
-				moveSystem <<<(NPARTICLE+255)/256, 256>>> (Fx, Fy, Px, Py, Vx, Vy, mass, cs[s]*dt, cd[s]*dt, NPARTICLE);
+				moveSystem <<<(NPARTICLE+255)/256, 256>>> (Fx, Fy, Px, Py, Vx, Vy, angle, omega, mass, cs[s]*dt, cd[s]*dt, dt/SCHEMEORDER, NPARTICLE, active);
 				cudaDeviceSynchronize();
 			}
 
-			computeCollisions <<<(NPARTICLE*NPARTICLE+255)/256, 256>>> (Px, Py, Vx, Vy, Sx, Sy, Jx, Jy, mass, radius, NPARTICLE);
+			computeCollisions <<<(NPARTICLE*NPARTICLE+255)/256, 256>>> (Px, Py, Vx, Vy, omega, Sx, Sy, Jx, Jy, mass, radius, NPARTICLE, active);
 			cudaDeviceSynchronize();
 
-			collisionResponse <<<(NPARTICLE+255)/256, 256>>> (Px, Py, Vx, Vy, Sx, Sy, Jx, Jy, NPARTICLE);
+			collisionResponse <<<(NPARTICLE+255)/256, 256>>> (Px, Py, Vx, Vy, Sx, Sy, Jx, Jy, NPARTICLE, active);
 			cudaDeviceSynchronize();
 
 		}
-		saveFrame(outFile, Px, Py, NPARTICLE);
+		saveFrame(outFile, radius, Px, Py, angle, NPARTICLE, active);
 		frames ++;
 		if (!stopped) printProgress(frames, DURATION*FRAMERATE);
 	}	
 	cout << "\n";
 	outFile.close();
-	saveProgress(outFileName, NPARTICLE, FRAMESTEP, mass, radius, Px, Py, Vx, Vy);
+	// saveProgress(outFileName, NPARTICLE, FRAMESTEP, mass, radius, Px, Py, Vx, Vy); // STILL NOT WORKING :(
 
 	cudaFree(mass);
 	cudaFree(radius);

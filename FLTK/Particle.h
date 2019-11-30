@@ -11,6 +11,7 @@ private:
 	double random(double min, double max) { return ((double)rand() / RAND_MAX) * (max - min) + min; }
 
 public:
+	bool active = true;
 	double mass, radius, angle, omega;
 	Vector2 position, velocity;
 	Particle ();
