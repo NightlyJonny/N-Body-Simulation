@@ -7,14 +7,6 @@ Vector2::Vector2 (double x0, double y0) : x(x0), y(y0) {}
 
 Vector2::~Vector2 () {}
 
-double Vector2::getx () const { return x; }
-
-double Vector2::gety () const { return y; }
-
-double Vector2::setx (double newx) { return x = newx; }
-
-double Vector2::sety (double newy) { return y = newy; }
-
 Vector2 Vector2::operator+ (const Vector2& v2) { return Vector2(x + v2.x, y + v2.y); }
 
 Vector2 Vector2::operator- (const Vector2& v2) { return Vector2(x - v2.x, y - v2.y); }

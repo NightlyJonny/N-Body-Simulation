@@ -8,11 +8,6 @@ public:
 	Vector2 (double, double);
 	~Vector2 ();
 
-	double getx () const;
-	double gety () const;
-	double setx (double);
-	double sety (double);
-
 	Vector2 operator+ (const Vector2&);
 	Vector2 operator- (const Vector2&);
 	Vector2 operator* (double);

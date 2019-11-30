@@ -172,8 +172,7 @@ void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, i
 			particles[p].positionStep(coefd[n] * t, force[p]);
 			particles[p].angularStep(t/N);
 
-			// force[p] = particles[p].position * -KFACTOR;
-			force[p].x = force[p].y = 0;
+			force[p] = particles[p].position * -KFACTOR;
 		}
 	}
 
