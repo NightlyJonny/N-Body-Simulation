@@ -24,6 +24,7 @@ Simulation::Simulation(int argc, char** argv) {
 	else {
 		if (argc > 2) DURATION = stoi(argv[argc - 2]);
 	}
+	if (DURATION == 0) DURATION = UINT_MAX;
 
 	particles = new Particle[NPARTICLE];
 	if (resuming) {
@@ -112,17 +113,14 @@ void Simulation::core() {
 						Vector2 vrVector = particles[p1].velocity - particles[p2].velocity;
 						double nvr = vrVector * nVersor;
 						if (abs(nvr) < ZEROTHRESHOLD) {
-							double m1 = particles[p1].mass, m2 = particles[p2].mass;
-							Vector2 v1 = particles[p1].velocity, v2 = particles[p2].velocity;
-							double w1 = particles[p1].omega, w2 = particles[p2].omega;
-							double r1 = particles[p1].radius, r2 = particles[p2].radius;
-
-							particles[p1].position = (particles[p1].position*m1 + particles[p2].position*m2) / (m1 + m2);
-							particles[p1].velocity = (v1*m1 + v2*m2) / (m1 + m2);
-							particles[p1].mass += m2;
-							particles[p1].radius = Vector2(particles[p1].radius, particles[p2].radius).norm();
-							particles[p1].omega = (m1* r1*r1 * w1 + m2* r2*r2 * w2 + 2 * m2 * (vrVector.y*nVersor.x - vrVector.x*nVersor.y)) / (particles[p1].mass * particles[p1].radius*particles[p1].radius);
-
+							Vector2 nVector = nVersor * particles[p1].radius;
+							particles[p1].position = (particles[p1].position*particles[p1].mass + particles[p2].position*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
+							particles[p1].velocity = (particles[p1].velocity*particles[p1].mass + particles[p2].velocity*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
+							double newRadPow2 = particles[p1].radius*particles[p1].radius + particles[p2].radius*particles[p2].radius;
+							particles[p1].omega = (particles[p1].mass * particles[p1].radius*particles[p1].radius * particles[p1].omega + particles[p2].mass * particles[p2].radius*particles[p2].radius * particles[p2].omega + 2 * particles[p2].mass * (nVector.x*vrVector.y - vrVector.x*nVector.y)) / ((particles[p1].mass + particles[p2].mass) * newRadPow2);
+							particles[p1].mass += particles[p2].mass;
+							particles[p1].radius = sqrt(newRadPow2);
+							
 							particles[p2].active = false;
 						}
 						else {

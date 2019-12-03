@@ -7,7 +7,6 @@
 
 class Particle {
 private:
-	double remainder(double a, double b) { return a - (int)(a/b) * b; }
 	double random(double min, double max) { return ((double)rand() / RAND_MAX) * (max - min) + min; }
 
 public:

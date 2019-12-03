@@ -3,3 +3,5 @@
 ./FLTK/Main
 ./FLTK/Outputfile.txt
 ./FLTK/.vscode
+./Normal/core
+./CUDA/coreGPU

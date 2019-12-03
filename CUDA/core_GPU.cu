@@ -1,12 +1,12 @@
 #include <iostream>
 #include <fstream>
-#include <cmath>
 #include <signal.h>
-#define FRAMERATE 30
+#define FRAMERATE 60
 #define EFACTOR 0.2
 #define KFACTOR 0 // 0.005
 #define SCHEMEORDER 4
 #define ZEROTHRESHOLD 0.2
+#define PI 3.14159265359
 using namespace std;
 
 void saveFrame (ofstream& outFile, float* radius, float* Px, float* Py, float* angle, int particleNumber, bool* active) {
@@ -24,7 +24,7 @@ float random (float min, float max) {
 	return ((float)rand() / RAND_MAX) * (max-min) + min;
 }
 
-void printProgress (int currentFrame, int totalFrames) {
+void printProgress (unsigned int currentFrame, unsigned int totalFrames) {
 	float percentage = ((float)currentFrame / (float)totalFrames) * 100;
 	cout << "\r[";
 	for (int i = 0; i < 50; i++) {
@@ -35,7 +35,7 @@ void printProgress (int currentFrame, int totalFrames) {
 	cout << "]" << flush;
 }
 
-void saveProgress(char* ofName, int NPARTICLE, int FRAMESTEP, float* mass, float* radius, float* Px, float* Py, float* Vx, float* Vy) {
+void saveProgress (char* ofName, int NPARTICLE, int FRAMESTEP, float* mass, float* radius, float* Px, float* Py, float* Vx, float* Vy) {
 	ofstream outFile ((string(ofName) + string(".dat")).c_str(), ios::out | ios::trunc | ios::binary);
 	if (!outFile.is_open()) {
 		cerr << "Error opening output file." << endl;
@@ -81,11 +81,11 @@ __global__ void computeForces (float* Fx, float* Fy, float* Px, float* Py, float
 __global__ void moveSystem (float* Fx, float* Fy, float* Px, float* Py, float* Vx, float* Vy, float* angle, float* omega, float* mass, float dtv, float dtp, float dta, int NPARTICLE, bool* active) {
 	int p = blockIdx.x * blockDim.x + threadIdx.x;
 	if (p < NPARTICLE && active[p]) {
-		atomicAdd(Vx+p, (Fx[p]/mass[p]) * dtv);
-		atomicAdd(Vy+p, (Fy[p]/mass[p]) * dtv);
-		atomicAdd(Px+p, Vx[p] * dtp);
-		atomicAdd(Py+p, Vy[p] * dtp);
-		atomicAdd(angle+p, omega[p] * dta);
+		Vx[p] += (Fx[p]/mass[p]) * dtv;
+		Vy[p] += (Fy[p]/mass[p]) * dtv;
+		Px[p] += Vx[p] * dtp;
+		Py[p] += Vy[p] * dtp;
+		angle[p] = fmodf(angle[p] + omega[p] * dta, 2*PI);
 		Fx[p] = -KFACTOR * Px[p];
 		Fy[p] = -KFACTOR * Py[p];
 	}
@@ -97,12 +97,12 @@ __global__ void computeCollisions (float* Px, float* Py, float* Vx, float* Vy, f
 		int p1 = p / NPARTICLE, p2 = p % NPARTICLE;
 		if ((p2 < NPARTICLE) && (p2 > p1) && active[p1] && active[p2]) {
 			float Dx = Px[p1] - Px[p2], Dy = Py[p1] - Py[p2];
-			float distance2 = Dx*Dx + Dy*Dy, distance = sqrt(distance2);
+			float distance = sqrt(Dx*Dx + Dy*Dy);
 			float Nx = Dx/distance, Ny = Dy/distance;
-			float Vrx = Vx[p1] - Vx[p2], Vry = Vy[p1] - Vy[p2];
-			float nvr = Vrx*Nx + Vry*Ny;
 			if (distance <= radius[p1] + radius[p2]) {
-
+				float Cx = Nx * radius[p1], Cy = Ny * radius[p1];
+				float Vrx = Vx[p1] - Vx[p2], Vry = Vy[p1] - Vy[p2];
+				float nvr = Vrx*Nx + Vry*Ny;
 				if (abs(nvr) > ZEROTHRESHOLD) {
 
 					// Collision
@@ -126,10 +126,10 @@ __global__ void computeCollisions (float* Px, float* Py, float* Vx, float* Vy, f
 					Vx[p1] = (Vx[p1] * mass[p1] + Vx[p2] * mass[p2]) / (mass[p1] + mass[p2]);
 					Vy[p1] = (Vy[p1] * mass[p1] + Vy[p2] * mass[p2]) / (mass[p1] + mass[p2]);
 
-					float newRadius = sqrt(radius[p1]*radius[p1] + radius[p2]*radius[p2]);
-					omega[p1] = (mass[p1] * radius[p1]*radius[p1] * omega[p1] + mass[p2]* radius[p2]*radius[p2] * omega[p2] + 2 * mass[p2] * (Vry * Nx - Vrx * Ny)) / (mass[p1] * newRadius);
-					atomicAdd(mass+p1, mass[p2]);
-					radius[p1] = newRadius;
+					float newRadPow2 = radius[p1]*radius[p1] + radius[p2]*radius[p2];
+					omega[p1] = (mass[p1] * radius[p1]*radius[p1] * omega[p1] + mass[p2]* radius[p2]*radius[p2] * omega[p2] + 2 * mass[p2] * (Cx*Vry - Vrx*Cy)) / ((mass[p1] + mass[p2]) * newRadPow2);
+					mass[p1] += mass[p2];
+					radius[p1] = sqrt(newRadPow2);
 
 					active[p2] = false;
 				}
@@ -153,7 +153,7 @@ __global__ void collisionResponse (float* Px, float* Py, float* Vx, float* Vy, f
 int main(int argc, char** argv) {
 	signal(SIGINT, sigHandler);
 	char* outFileName;
-	int DURATION = 60, FRAMESTEP = 10, NPARTICLE = 100; // Optional terminal paramenters IN THIS ORDER!
+	unsigned int DURATION = 60, FRAMESTEP = 10, NPARTICLE = 500; // Optional terminal paramenters IN THIS ORDER!
 	if (argc > 1) outFileName = argv[argc-1];
 	else {
 		cerr << "You must specify an output or save file.\nUsage: ./core [DURATION] [FRAMESTEP] [NPARTICLE] \"OutputFile.txt\"\nor\n./core \"ProgressData.dat\"" << endl;
@@ -168,6 +168,7 @@ int main(int argc, char** argv) {
 	else {
 		if (argc > 2) DURATION = stoi(argv[argc-2]);
 	}
+	if (DURATION == 0) DURATION = UINT_MAX;
 	
 	float *mass, *radius, *Px, *Py, *Vx, *Vy, *angle, *omega, *Fx, *Fy, *Sx, *Sy, *Jx, *Jy;
 	bool *active;
@@ -223,7 +224,7 @@ int main(int argc, char** argv) {
 			omega[p] = random(-1, 1);
 			mass[p] = random(0.5, 2);
 			radius[p] = random(0.1, 0.2);
-			float rx = random(-100, 100), ry = random(-100, 100), rvn = random(-5, 3), rvt = random(0, 10);
+			float rx = random(-100, 100), ry = random(-100, 100), rvn = random(-3, 1), rvt = random(0, 7);
 			Px[p] = rx;
 			Py[p] = ry;
 			float rn = sqrt(rx*rx + ry*ry);
@@ -260,7 +261,7 @@ int main(int argc, char** argv) {
 		cd[0] = 0.675603595979828; cd[1] = -0.175603595979828; cd[2] = -0.175603595979828; cd[3] = 0.675603595979828;
 	}
 
-	int frames = 0;
+	unsigned int frames = 0;
 	const float dt = 1.0/(FRAMERATE*FRAMESTEP);
 	while ((frames < DURATION*FRAMERATE) && (!stopped)) {
 		for (int i = 0; i < FRAMESTEP; i ++) {
