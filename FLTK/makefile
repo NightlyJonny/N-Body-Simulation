@@ -1,3 +1,5 @@
+all: compile link run
+
 prerequisites:
 	sudo apt install fltk1.3-dev
 	sudo apt install libxft-dev
