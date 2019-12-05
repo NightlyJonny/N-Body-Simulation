@@ -16,10 +16,12 @@ private:
 	int NParticle;
 	bool asteroids = false;
 	GLfloat angle = 0, x = 0, y = 0;
+	//This is useful for the creation of the cylinder
+	GLUquadricObj *quadratic;
 
 public:
 	Drawer(Simulation* sim);
-	void drawFilledCircle(GLfloat x, GLfloat y, GLfloat radius, GLfloat angle);
+	void drawSphere(GLfloat x, GLfloat y, GLfloat z, GLfloat radius, GLfloat angle, GLfloat xRot, GLfloat yRot, GLfloat zRot);
 	void draw_scene();
 
 	void setAsteroids(bool active);

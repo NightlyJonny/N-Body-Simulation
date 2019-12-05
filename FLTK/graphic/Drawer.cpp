@@ -4,27 +4,54 @@ Drawer::Drawer(Simulation* sim) {
 	
 	this->particle = sim->getParticle();
 	this->NParticle = sim->getNParticle();
+
+	int argc = 1;
+  	char *argv[1] = {(char*)"Something"};
+	glutInit(&argc, argv);
+
+	quadratic = gluNewQuadric();
 }
 
-void Drawer::drawFilledCircle(GLfloat x, GLfloat y, GLfloat radius, GLfloat angle) {
-	const int triangleAmount = 40; //# of triangles used to draw circle
+/*
+x, y, z: The position vector
+radius: Ray of sphere
+angle: Angle of rotation expressed in radiant
+xRot, yRot, zRot: The axis rotation vector
+*/
+void Drawer::drawSphere(GLfloat x, GLfloat y, GLfloat z, GLfloat radius, GLfloat angle, GLfloat xRot, GLfloat yRot, GLfloat zRot) {
 
-	glBegin(GL_TRIANGLE_FAN);
+	float height = radius/8;
+	float ray = radius + 1E-2;
+
+	//This will create a sphere and translate it
+	glPushMatrix();
+		
 		glColor3f(1.0, 1.0, 1.0);
-		glVertex2f(x, y); // center of circle
-		for (int i = 0; i <= triangleAmount; i++) {
-			glVertex2f(
-				x + (radius * cos(i * 2*PI / triangleAmount)),
-				y + (radius * sin(i * 2*PI / triangleAmount))
-			);
-		}
-	glEnd();
+		glTranslatef(x, y, z);
+		glRotatef(angle * 180 / M_PI, xRot, yRot, zRot);
+		glutSolidSphere(radius, 50, 50);
 
-	glBegin(GL_LINES);
 		glColor3f(1.0, 0, 0);
-		glVertex2f(x, y);
-		glVertex2f( x + radius*cos(angle), y + radius*sin(angle) );
-	glEnd();
+		glRotatef(90, 1, 0, 0);
+		
+		gluCylinder(quadratic, ray, ray, height, 32, 32);
+
+		glRotatef(90, 0, 1, 0);
+		gluCylinder(quadratic, ray, ray, height, 32, 32);
+	glPopMatrix();
+
+	
+
+	//this will create a red circle that identify the rotation of the sphere
+	glPushMatrix();
+		
+		glTranslatef(x, y ,z);
+		
+		
+		
+	glPopMatrix();
+
+
 }
 
 void Drawer::drawSpaceship() {
@@ -69,7 +96,7 @@ void Drawer::draw_scene() {
 	for (int i = 0; i < NParticle; i++) {
 		if (!particle[i].active) continue;
 		Vector2 pos = particle[i].position;
-		drawFilledCircle(pos.x, pos.y, particle[i].radius, particle[i].angle);
+		drawSphere(pos.x, pos.y, 0, particle[i].radius, particle[i].angle, 0, 0, 1);
 	}
 	if (asteroids) drawSpaceship();
 	if (shooting) shoot();
