@@ -15,8 +15,8 @@ void Frame::init(void) {
 	gl_font(FL_HELVETICA_BOLD, 16);
 }
 
-void Frame::setSimulation(Simulation* sim) {
-	drawer = new Drawer(sim);
+void Frame::setSimulation(Simulation* sim, bool firstRun) {
+	drawer = new Drawer(sim, firstRun);
 	frames = sim->getFrameRef();
 }
 

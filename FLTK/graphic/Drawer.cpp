@@ -1,14 +1,15 @@
 #include "Drawer.h"
 
-Drawer::Drawer(Simulation* sim) {
+Drawer::Drawer(Simulation* sim, bool firstRun) {
 	
 	this->particle = sim->getParticle();
 	this->NParticle = sim->getNParticle();
 
-	int argc = 1;
-  	char *argv[1] = {(char*)"Something"};
-	glutInit(&argc, argv);
-
+	if (firstRun) {
+		int argc = 1;
+		char *argv[1] = {(char*)"Something"};
+		glutInit(&argc, argv);
+	}
 	quadratic = gluNewQuadric();
 }
 
@@ -47,11 +48,7 @@ void Drawer::drawSphere(GLfloat x, GLfloat y, GLfloat z, GLfloat radius, GLfloat
 		
 		glTranslatef(x, y ,z);
 		
-		
-		
 	glPopMatrix();
-
-
 }
 
 void Drawer::drawSpaceship() {

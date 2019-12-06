@@ -3,12 +3,8 @@
 
 #include <FL/Fl.H>
 #include <FL/Fl_Window.H>
-#include <FL/Fl_Box.H>
-#include <FL/Fl_Button.H>
-#include <FL/Fl_Value_Slider.H>
 #include <FL/Fl_Gl_Window.H>
 #include <FL/Fl_Multiline_Output.H>
-#include <FL/Fl_Text_Display.H>
 #include <string>
 #include "Frame.h"
 
@@ -24,7 +20,7 @@ private:
 	void CreateMyWindow();
 public:
 	static Simulation* sim;
-	Form(Simulation*);
+	Form(Simulation*, bool);
 	
 	void updateTime(float nextTime);
 	void updateDebug(string text);

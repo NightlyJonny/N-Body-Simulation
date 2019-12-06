@@ -9,10 +9,10 @@ Particle::Particle (double m, double r, Vector2 p, Vector2 v, double a, double o
 Particle::~Particle () {}
 
 void Particle::initialize () {
-	Vector2 rpVector (random(-20, 20), random(-20, 20));
+	Vector2 rpVector (random(-10, 10), random(-10, 10));
 	Vector2 tpVector (-rpVector.y, rpVector.x);
 	position = rpVector;
-	velocity = rpVector.versor() * random(-3, 3) + tpVector.versor() * random(0, 8);
+	velocity = rpVector.versor() * random(-3, 3) + tpVector.versor() * random(0, 5);
 	omega = random(-1, 1);
 	mass = random(0.5, 2);
 	radius = random(0.1, 0.2);

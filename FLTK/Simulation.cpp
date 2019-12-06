@@ -6,29 +6,20 @@ void sigHandler(int sig) {
 	stopped = true;
 }
 
-Simulation::Simulation(int argc, char** argv) {
+Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool fl) {
 	signal(SIGINT, sigHandler);
-	char* outFileName;
 
-	if (argc > 1) outFileName = argv[argc - 1];
-	else {
-		cerr << "You must specify an output file.\nUsage: ./core [DURATION] [FRAMESTEP] [NPARTICLE] \"OutputFile.txt\"\nor\n./core \"ProgressData.dat\"" << endl;
-		exit(1);
-	}
-	bool resuming = string(outFileName).substr(string(outFileName).length() - 4, 4).compare(string(".dat")) == 0;
-	if (!resuming) {
-		if (argc > 2) NPARTICLE = stoi(argv[argc - 2]);
-		if (argc > 3) FRAMESTEP = stoi(argv[argc - 3]);
-		if (argc > 4) DURATION = stoi(argv[argc - 4]);
-	}
-	else {
-		if (argc > 2) DURATION = stoi(argv[argc - 2]);
-	}
+	frameLimit = fl;
+	string outFileName = outFN;
+	DURATION = duration;
 	if (DURATION == 0) DURATION = UINT_MAX;
+	FRAMESTEP = frameStep;
+	NPARTICLE = particleNumber;
 
+	bool resuming = outFileName.substr(outFileName.length() - 4, 4).compare(string(".dat")) == 0;
 	particles = new Particle[NPARTICLE];
 	if (resuming) {
-		ifstream inFile(outFileName, ios::in | ios::binary);
+		ifstream inFile(outFileName.c_str(), ios::in | ios::binary);
 		if (!inFile.is_open()) {
 			cerr << "Error opening input file." << endl;
 			exit(2);
@@ -44,27 +35,15 @@ Simulation::Simulation(int argc, char** argv) {
 			}
 		}
 		inFile.close();
-		strcpy(outFileName, string(outFileName).substr(0, string(outFileName).length() - 4).c_str());
+		outFileName = outFileName.substr(0, outFileName.length() - 4);
 	}
 	else {
 		for (int p = 0; p < NPARTICLE; p++) {
 			particles[p].initialize();
 		}
-
-		// Debug with few particles initialized one by one.
-		// particles[0].position = Vector2(-5, 0.22);
-		// particles[0].velocity = Vector2(5, 0);
-		// particles[0].radius = 0.5;
-		// particles[0].mass = 10;
-		// particles[1].position = Vector2(5, -0.22);
-		// particles[1].velocity = Vector2(-5, 0);
-		// particles[1].radius = 0.5;
-		// particles[1].mass = 10;
-		// particles[2].position = Vector2(0.05, -0.05);
-		// particles[2].velocity = Vector2(0, 1);
 	}
 
-	outFile.open(outFileName, ios::out | (resuming ? ios::app : ios::trunc));
+	outFile.open(outFileName.c_str(), ios::out | (resuming ? ios::app : ios::trunc));
 	if (!outFile.is_open()) {
 		cerr << "Error opening output file." << endl;
 		return;
@@ -93,8 +72,10 @@ void Simulation::core() {
 			// Particle movement
 			integrator(particles, NPARTICLE, FRAMESTEP, 4, cs, cd);
 			
-			//It checks if the simulation is in pause, wait for 0.1 second to recheck the variable
-			while(pause && !stopped) { this_thread::sleep_for(chrono::milliseconds(100)); }
+			//It checks if the simulation is in pause, wait for 0.01 second to recheck the variable
+			if (frameLimit) {
+				while(pause && !stopped) { this_thread::sleep_for(chrono::milliseconds(10)); }
+			}
 
 			// Collision detection (discrete)
 			for (int p1 = 0; p1 < NPARTICLE; p1++) {
@@ -116,10 +97,10 @@ void Simulation::core() {
 							Vector2 nVector = nVersor * particles[p1].radius;
 							particles[p1].position = (particles[p1].position*particles[p1].mass + particles[p2].position*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
 							particles[p1].velocity = (particles[p1].velocity*particles[p1].mass + particles[p2].velocity*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
-							double newRadPow2 = particles[p1].radius*particles[p1].radius + particles[p2].radius*particles[p2].radius;
-							particles[p1].omega = (particles[p1].mass * particles[p1].radius*particles[p1].radius * particles[p1].omega + particles[p2].mass * particles[p2].radius*particles[p2].radius * particles[p2].omega + 2 * particles[p2].mass * (nVector.x*vrVector.y - vrVector.x*nVector.y)) / ((particles[p1].mass + particles[p2].mass) * newRadPow2);
+							double newRadius = cbrt(pow(particles[p1].radius, 3) + pow(particles[p2].radius, 3));
+							particles[p1].omega = (particles[p1].mass * particles[p1].radius*particles[p1].radius * particles[p1].omega + particles[p2].mass * particles[p2].radius*particles[p2].radius * particles[p2].omega + 2 * particles[p2].mass * (nVector.x*vrVector.y - vrVector.x*nVector.y)) / ((particles[p1].mass + particles[p2].mass) * newRadius*newRadius);
 							particles[p1].mass += particles[p2].mass;
-							particles[p1].radius = sqrt(newRadPow2);
+							particles[p1].radius = newRadius;
 							
 							particles[p2].active = false;
 						}
@@ -132,16 +113,22 @@ void Simulation::core() {
 				}
 			}
 		}
+		double maxOmega = 0;
+		for (int p = 0; p < NPARTICLE; p++) {
+			if (particles[p].active && (abs(particles[p].omega) > maxOmega)) maxOmega = abs(particles[p].omega);
+		}
+		debugText = to_string(maxOmega);
 
 		saveFrame(outFile, particles, NPARTICLE);
 		frames++;
 
-		auto end = chrono::high_resolution_clock::now();
-		int deltaTime = chrono::duration_cast<chrono::microseconds>(end - start).count();
-		if (deltaTime < targetDt) {
-			this_thread::sleep_for(chrono::microseconds(targetDt - deltaTime));
+		if (frameLimit) {
+			auto end = chrono::high_resolution_clock::now();
+			int deltaTime = chrono::duration_cast<chrono::microseconds>(end - start).count();
+			if (deltaTime < targetDt) {
+				this_thread::sleep_for(chrono::microseconds(targetDt - deltaTime));
+			}
 		}
-		// if (!stopped) printProgress(frames, DURATION * FRAMERATE);
 	}
 }
 

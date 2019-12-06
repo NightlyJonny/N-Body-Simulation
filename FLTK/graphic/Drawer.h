@@ -20,7 +20,7 @@ private:
 	GLUquadricObj *quadratic;
 
 public:
-	Drawer(Simulation* sim);
+	Drawer(Simulation* sim, bool firstRun);
 	void drawSphere(GLfloat x, GLfloat y, GLfloat z, GLfloat radius, GLfloat angle, GLfloat xRot, GLfloat yRot, GLfloat zRot);
 	void draw_scene();
 

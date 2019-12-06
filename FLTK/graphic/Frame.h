@@ -32,7 +32,7 @@ private:
 public:
 	double ruotaX, ruotaY, ruotaZ, zoom = 0.2, xshift = 0, yshift = 0;
 	Frame(int x, int y, int w, int h, const char* l = 0) : Fl_Gl_Window(x, y, w, h, l) {};
-	void setSimulation(Simulation* sim);
+	void setSimulation(Simulation* sim, bool firstRun);
 };
 
 

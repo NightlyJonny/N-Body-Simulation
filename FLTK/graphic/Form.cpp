@@ -5,10 +5,10 @@ Fl_Window* Form::form;
 Frame* Form::scene;
 Simulation* Form::sim;
 
-Form::Form(Simulation* sim) {
+Form::Form(Simulation* sim, bool firstRun) {
 	Form::sim = sim;
 	CreateMyWindow();
-	getFrame()->setSimulation(sim);
+	getFrame()->setSimulation(sim, firstRun);
 }
 
 void Form::CreateMyWindow(void) {
