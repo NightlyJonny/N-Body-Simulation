@@ -67,7 +67,7 @@ void start_cb(Fl_Widget* o, void* settings) {
 		return;
 
 	if(sw->typeChoice->value() == 2){
-		string str = "cd CUDA && ./coreGPU " + to_string(duration) + " " + to_string(frameStep) + " " + to_string(particleNumber) + outFile; 
+		string str = "./CUDA/coreGPU " + to_string(duration) + " " + to_string(frameStep) + " " + to_string(particleNumber) + " " + outFile;
 		int i = system(str.c_str());
 		return;
 	}
