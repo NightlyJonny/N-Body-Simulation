@@ -1,7 +1,7 @@
 #ifndef PARTICLE_H
 #define PARTICLE_H
 
-#include "Vector2.h"
+#include "Vector3.h"
 #include <cmath>
 #define PI 3.14159265359
 
@@ -12,14 +12,14 @@ private:
 public:
 	bool active = true;
 	double mass, radius, angle, omega;
-	Vector2 position, velocity;
+	Vector3 position, velocity;
 	Particle ();
 	Particle (double, double);
-	Particle (double, double, Vector2, Vector2, double, double);
+	Particle (double, double, Vector3, Vector3, double, double);
 	~Particle ();
 	
-	void positionStep (double, Vector2&);
-	void velocityStep (double, Vector2&);
+	void positionStep (double, Vector3&);
+	void velocityStep (double, Vector3&);
 	void angularStep (double);
 	void initialize ();
 };

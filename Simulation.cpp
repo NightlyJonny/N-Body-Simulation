@@ -82,19 +82,19 @@ void Simulation::core() {
 				if (!particles[p1].active) continue;
 				for (int p2 = p1 + 1; p2 < NPARTICLE; p2++) {
 					if (!particles[p2].active) continue;
-					Vector2 dVector = particles[p1].position - particles[p2].position;
-					Vector2 nVersor = dVector.versor();
+					Vector3 dVector = particles[p1].position - particles[p2].position;
+					Vector3 nVersor = dVector.versor();
 					if (dVector.norm() <= particles[p1].radius + particles[p2].radius) {
 
 						// Collision response
-						Vector2 cVector = nVersor * 1.0001 * (particles[p1].radius + particles[p2].radius) - dVector;
+						Vector3 cVector = nVersor * 1.0001 * (particles[p1].radius + particles[p2].radius) - dVector;
 						particles[p1].position = particles[p1].position + cVector * (particles[p1].mass / (particles[p1].mass + particles[p2].mass));
 						particles[p2].position = particles[p2].position - cVector * (particles[p2].mass / (particles[p1].mass + particles[p2].mass));
 
-						Vector2 vrVector = particles[p1].velocity - particles[p2].velocity;
+						Vector3 vrVector = particles[p1].velocity - particles[p2].velocity;
 						double nvr = vrVector * nVersor;
 						if (abs(nvr) < ZEROTHRESHOLD) {
-							Vector2 nVector = nVersor * particles[p1].radius;
+							Vector3 nVector = nVersor * particles[p1].radius;
 							particles[p1].position = (particles[p1].position*particles[p1].mass + particles[p2].position*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
 							particles[p1].velocity = (particles[p1].velocity*particles[p1].mass + particles[p2].velocity*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
 							double newRadius = cbrt(pow(particles[p1].radius, 3) + pow(particles[p2].radius, 3));
@@ -133,7 +133,7 @@ void Simulation::core() {
 }
 
 void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, int N, double* coefc, double* coefd) {
-	Vector2* force = new Vector2[NPARTICLE];
+	Vector3* force = new Vector3[NPARTICLE];
 	const double t = 1.0 / (FRAMERATE * FRAMESTEP);
 
 	for (int n = 0; n < N; n++) {
@@ -141,9 +141,9 @@ void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, i
 			if (!particles[p1].active) continue;
 			for (int p2 = p1 + 1; p2 < NPARTICLE; p2++) {
 				if (!particles[p2].active) continue;
-				Vector2 dVector = particles[p2].position - particles[p1].position;
+				Vector3 dVector = particles[p2].position - particles[p1].position;
 				double distance = dVector.norm();
-				Vector2 curForce = dVector.versor() * particles[p1].mass * particles[p2].mass / pow(distance, 2);
+				Vector3 curForce = dVector.versor() * particles[p1].mass * particles[p2].mass / pow(distance, 2);
 				force[p1] = force[p1] + curForce;
 				force[p2] = force[p2] - curForce;
 			}
@@ -164,7 +164,7 @@ void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, i
 void Simulation::saveFrame (ofstream& outFile, Particle* particles, int particleNumber) {
 	for (int i = 0; i < particleNumber; i++) {
 		if (particles[i].active)
-			outFile << particles[i].radius << ":" << particles[i].position.x << "," << particles[i].position.y << ";" << particles[i].angle << "\t";
+			outFile << particles[i].radius << ":" << particles[i].position.x << "," << particles[i].position.y << "," << particles[i].position.z << ";" << particles[i].angle << "\t";
 		else
 			outFile << "0" << "\t";
 	}

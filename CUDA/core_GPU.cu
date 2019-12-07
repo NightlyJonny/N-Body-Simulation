@@ -12,7 +12,7 @@ using namespace std;
 void saveFrame (ofstream& outFile, float* radius, float* Px, float* Py, float* angle, int particleNumber, bool* active) {
 	for (int i = 0; i < particleNumber; i++) {
 		if (active[i])
-			outFile << radius[i] << ":" << Px[i] << "," << Py[i] << ";" << angle[i] << "\t";
+			outFile << radius[i] << ":" << Px[i] << "," << Py[i] << << ",0;" << angle[i] << "\t";
 		else
 			outFile << "0" << "\t";
 	}

@@ -87,8 +87,8 @@ void Drawer::shoot() {
 void Drawer::draw_scene() {
 	for (int i = 0; i < NParticle; i++) {
 		if (!particle[i].active) continue;
-		Vector2 pos = particle[i].position;
-		drawSphere(pos.x, pos.y, 0, particle[i].radius, particle[i].angle, 0, 0, 1);
+		Vector3 pos = particle[i].position;
+		drawSphere(pos.x, pos.y, pos.z, particle[i].radius, particle[i].angle, 0, 0, 1);
 	}
 	if (asteroids) drawSpaceship();
 	if (shooting) shoot();
