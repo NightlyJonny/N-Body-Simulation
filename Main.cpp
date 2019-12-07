@@ -26,6 +26,7 @@ struct SettingsWidget {
 	Fl_Input* durationTxt;
 	Fl_Input* fsTxt;
 	Fl_Input* pnTxt;
+	Fl_Check_Button* outChk;
 };
 
 void idle_cb(void*) {
@@ -36,7 +37,7 @@ void idle_cb(void*) {
 void start(bool gui, string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber) {
 
 	sim = new Simulation(outFile, duration, frameStep, particleNumber, gui);
-	std::thread heavyWork([]() {sim->core(); });
+	std::thread heavyWork([]() { sim->core(); });
 
 	//Create and execute the graphic part
 	if (gui) {
@@ -56,7 +57,7 @@ void start(bool gui, string outFile, unsigned int duration, unsigned int frameSt
 
 void start_cb(Fl_Widget* o, void* settings) {
 	SettingsWidget* sw = (SettingsWidget*)settings;
-	bool gui = (sw->typeChoice->value() == 0);
+	bool gui = (sw->typeChoice->value() == 0) || (sw->typeChoice->value() == 3);
 	
 	unsigned int duration = stoi(sw->durationTxt->value());
 	unsigned int frameStep = stoi(sw->fsTxt->value());
@@ -69,6 +70,11 @@ void start_cb(Fl_Widget* o, void* settings) {
 	if(sw->typeChoice->value() == 2){
 		string str = "./CUDA/coreGPU " + to_string(duration) + " " + to_string(frameStep) + " " + to_string(particleNumber) + " " + outFile;
 		int i = system(str.c_str());
+		return;
+	}
+
+	if(sw->typeChoice->value() == 3){
+		start(gui, outFile, 0, 0, 0);
 		return;
 	}
 
@@ -95,6 +101,29 @@ void out_cb(Fl_Widget* o, void* txt) {
 	}
 }
 
+void choice_cb(Fl_Widget* o, void* settings) {
+
+	SettingsWidget* sw = (SettingsWidget*)settings;
+	Fl_Choice *element = (Fl_Choice*)o;
+	if (element->value() == 3) {
+		sw->outFileTxt->label("   Input file:");
+		sw->outFileTxt->activate();
+		sw->outChk->value(1);
+		sw->outChk->deactivate();
+
+		sw->durationTxt->deactivate();
+		sw->fsTxt->deactivate();
+		sw->pnTxt->deactivate();
+	}
+	else {
+		sw->outFileTxt->label("Output file:");
+		sw->durationTxt->activate();
+		sw->fsTxt->activate();
+		sw->pnTxt->activate();
+		sw->outChk->activate();
+	}
+}
+
 int createWindow(){
 
 	SettingsWidget* setWidgets = new SettingsWidget();
@@ -106,29 +135,31 @@ int createWindow(){
 		Fl_Return_Button startBtn (310, 360, 80, 30, "Start");
 		Fl_Button quitBtn (10, 360, 80, 30, "&Quit");
 
-		Fl_Choice typeChoice (130, 20, 100, 30, "Simulation type:");
+		Fl_Choice typeChoice (140, 20, 100, 30, "Mode:");
 		setWidgets->typeChoice = &typeChoice;
 		typeChoice.add("FLTK live");
 		typeChoice.add("Classic");
 		typeChoice.add("CUDA");
+		typeChoice.add("Viewer");
 		typeChoice.value(0);
 
-		Fl_Input outFileTxt (90, 70, 140, 30, "Output file:");
+		Fl_Input outFileTxt (140, 70, 140, 30, "Output file:");
 		outFileTxt.value("outfile.txt");
 		setWidgets->outFileTxt = &outFileTxt;
 
-		Fl_Check_Button outFileChk (240, 70, 120, 30, "Save on file");
+		Fl_Check_Button outFileChk (290, 70, 120, 30, "Save on file");
 		outFileChk.value(true);
+		setWidgets->outChk = &outFileChk;
 
-		Fl_Input durationTxt (78, 120, 140, 30, "Duration:");
+		Fl_Input durationTxt (140, 120, 140, 30, "Duration:");
 		durationTxt.value("0");
 		setWidgets->durationTxt = &durationTxt;
 
-		Fl_Input fsTxt (120, 170, 140, 30, "Frame substeps:");
+		Fl_Input fsTxt (140, 170, 140, 30, "Frame substeps:");
 		fsTxt.value("10");
 		setWidgets->fsTxt = &fsTxt;
 
-		Fl_Input pnTxt (135, 220, 140, 30, "Particles number:");
+		Fl_Input pnTxt (140, 220, 140, 30, "Particles number:");
 		pnTxt.value("200");
 		setWidgets->pnTxt = &pnTxt;
 
@@ -136,6 +167,7 @@ int createWindow(){
 	startBtn.callback(start_cb, setWidgets);
 	quitBtn.callback(quit_cb);
 	outFileChk.callback(out_cb, &outFileTxt);
+	typeChoice.callback(choice_cb, setWidgets);
 
 	win.show();
 	return Fl::run();

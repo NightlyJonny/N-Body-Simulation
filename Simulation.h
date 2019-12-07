@@ -20,7 +20,7 @@ using namespace std;
 class Simulation {
 
 private:
-	ofstream outFile;
+	fstream outFile;
 	Particle* particles;
 	unsigned int DURATION = UINT_MAX, FRAMESTEP = 10, NPARTICLE = 200;
 	int frames = 0;
@@ -31,7 +31,7 @@ private:
 public:
 	Simulation(string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool frameLimit);
 	void core();
-	void saveFrame(ofstream& outFile, Particle* particles, int particleNumber);
+	void saveFrame(fstream& outFile, Particle* particles, int particleNumber);
 	void saveProgress(char* ofName, Particle* particles, int particleNumber, int frameStep);
 	double random(double min, double max);
 	void printProgress(int currentFrame, int totalFrames);
