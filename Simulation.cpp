@@ -8,6 +8,7 @@ void sigHandler(int sig) {
 
 Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool fl) {
 	signal(SIGINT, sigHandler);
+	srand(time(0));
 
 	frameLimit = fl;
 	string outFileName = outFN;
@@ -98,7 +99,7 @@ void Simulation::core() {
 							particles[p1].position = (particles[p1].position*particles[p1].mass + particles[p2].position*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
 							particles[p1].velocity = (particles[p1].velocity*particles[p1].mass + particles[p2].velocity*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
 							double newRadius = cbrt(pow(particles[p1].radius, 3) + pow(particles[p2].radius, 3));
-							particles[p1].omega = (particles[p1].mass * particles[p1].radius*particles[p1].radius * particles[p1].omega + particles[p2].mass * particles[p2].radius*particles[p2].radius * particles[p2].omega + 2 * particles[p2].mass * (nVector.x*vrVector.y - vrVector.x*nVector.y)) / ((particles[p1].mass + particles[p2].mass) * newRadius*newRadius);
+							particles[p1].omega = (particles[p1].omega * particles[p1].mass * pow(particles[p1].radius, 2) + particles[p2].omega * particles[p2].mass * pow(particles[p2].radius, 2) + nVector.cross(vrVector) * 2 * particles[p2].mass) / ((particles[p1].mass + particles[p2].mass) * pow(newRadius, 2));
 							particles[p1].mass += particles[p2].mass;
 							particles[p1].radius = newRadius;
 							
@@ -115,7 +116,7 @@ void Simulation::core() {
 		}
 		double maxOmega = 0;
 		for (int p = 0; p < NPARTICLE; p++) {
-			if (particles[p].active && (abs(particles[p].omega) > maxOmega)) maxOmega = abs(particles[p].omega);
+			if (particles[p].active && (particles[p].omega.norm() > maxOmega)) maxOmega = particles[p].omega.norm();
 		}
 		debugText = to_string(maxOmega);
 
@@ -185,11 +186,6 @@ void Simulation::saveProgress(char* ofName, Particle* particles, int particleNum
 	}
 
 	outFile.close();
-}
-
-double Simulation::random(double min, double max) {
-
-	return ((double)rand() / RAND_MAX) * (max - min) + min;
 }
 
 void Simulation::printProgress(int currentFrame, int totalFrames) {

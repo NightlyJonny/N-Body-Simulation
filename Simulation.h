@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <fstream>
-#include <cstdlib>
 #include <cmath>
 #include <signal.h>
 #include <string>

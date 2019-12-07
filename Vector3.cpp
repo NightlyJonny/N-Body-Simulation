@@ -17,10 +17,17 @@ double Vector3::operator* (const Vector3& v2) { return x*v2.x + y*v2.y + z*v2.z;
 
 Vector3 Vector3::operator/ (double s) { return Vector3(x / s, y / s, z / s); }
 
+Vector3 Vector3::cross (const Vector3& v2) const {
+
+	return Vector3(y*v2.z - z*v2.y, z*v2.x - x*v2.z, x*v2.y - y*v2.x);
+}
+
 double Vector3::norm () const {
+
 	return sqrt(x*x + y*y + z*z);
 }
 
 Vector3 Vector3::versor () const {
+
 	return Vector3(x, y, z) / norm();
 }

@@ -104,7 +104,7 @@ int createWindow(){
 	win.begin();
 
 		Fl_Return_Button startBtn (310, 360, 80, 30, "Start");
-		Fl_Button quitBtn (10, 360, 80, 30, "Quit");
+		Fl_Button quitBtn (10, 360, 80, 30, "&Quit");
 
 		Fl_Choice typeChoice (130, 20, 100, 30, "Simulation type:");
 		setWidgets->typeChoice = &typeChoice;
@@ -124,7 +124,7 @@ int createWindow(){
 		durationTxt.value("0");
 		setWidgets->durationTxt = &durationTxt;
 
-		Fl_Input fsTxt (120, 170, 140, 30, "Frame susteps:");
+		Fl_Input fsTxt (120, 170, 140, 30, "Frame substeps:");
 		fsTxt.value("10");
 		setWidgets->fsTxt = &fsTxt;
 

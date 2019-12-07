@@ -11,11 +11,11 @@ private:
 
 public:
 	bool active = true;
-	double mass, radius, angle, omega;
-	Vector3 position, velocity;
+	double mass, radius, angle;
+	Vector3 position, velocity, omega;
 	Particle ();
 	Particle (double, double);
-	Particle (double, double, Vector3, Vector3, double, double);
+	Particle (double, double, Vector3, Vector3, double, Vector3);
 	~Particle ();
 	
 	void positionStep (double, Vector3&);

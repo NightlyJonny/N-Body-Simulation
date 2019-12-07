@@ -13,6 +13,7 @@ public:
 	Vector3 operator* (double);
 	double operator* (const Vector3&);
 	Vector3 operator/ (double);
+	Vector3 cross (const Vector3&) const;
 
 	double norm () const;
 	Vector3 versor () const;
