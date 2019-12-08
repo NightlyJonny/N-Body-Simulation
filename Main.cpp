@@ -92,7 +92,7 @@ void out_cb(Fl_Widget* o, void* txt) {
 	Fl_Input* outFileTxt = (Fl_Input*)txt;
 
 	if (check->value()) {
-		outFileTxt->value("outfile.txt");
+		outFileTxt->value("result.sim");
 		outFileTxt->activate();
 	}
 	else {
@@ -144,7 +144,7 @@ int createWindow(){
 		typeChoice.value(0);
 
 		Fl_Input outFileTxt (140, 70, 140, 30, "Output file:");
-		outFileTxt.value("outfile.txt");
+		outFileTxt.value("result.sim");
 		setWidgets->outFileTxt = &outFileTxt;
 
 		Fl_Check_Button outFileChk (290, 70, 120, 30, "Save on file");

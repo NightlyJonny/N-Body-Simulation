@@ -46,12 +46,12 @@ Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameSt
 			}
 		}
 	
-		outFile.open(outFileName.c_str(), ios::out | (resuming ? ios::app : ios::trunc));
+		outFile.open(outFileName.c_str(), ios::out | ios::binary | (resuming ? ios::app : ios::trunc));
 		if (!outFile.is_open()) {
 			cerr << "Error opening output file." << endl;
 			return;
 		}
-		outFile << NPARTICLE << "\n";
+		if (!resuming) outFile.write((char *)(&NPARTICLE), sizeof(unsigned int));
 	}
 	else {
 		frameLimit = fl;
@@ -65,7 +65,7 @@ Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameSt
 		outFile.seekg(0, ios::beg);
 		outFile.read((char *)(&NPARTICLE), sizeof(unsigned int));
 		particles = new Particle[NPARTICLE];
-		DURATION = (fileLength - sizeof(unsigned int)) / (FRAMERATE * NPARTICLE * (sizeof(bool) + sizeof(float) * 8));
+		DURATION = round((float)(fileLength - sizeof(unsigned int)) / (FRAMERATE * NPARTICLE * (sizeof(bool) + sizeof(float) * 8)));
 		FRAMESTEP = 0;
 	}
 }
@@ -73,16 +73,16 @@ Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameSt
 void Simulation::core() {
 
 	// Second order
-	// double cs[] = {0, 1};
-	// double cd[] = {0.5, 0.5};
+	// float cs[] = {0, 1};
+	// float cd[] = {0.5, 0.5};
 
 	// Third order
-	// double cs[] = {7.0/24, 3.0/4, -1.0/24};
-	// double cd[] = {2.0/3, -2.0/3, 1};
+	// float cs[] = {7.0/24, 3.0/4, -1.0/24};
+	// float cd[] = {2.0/3, -2.0/3, 1};
 	
 	// Fourth order
-	double cs[] = {0, 1.351207191959657, -1.702414383919315, 1.351207191959657};
-	double cd[] = {0.675603595979828, -0.175603595979828, -0.175603595979828, 0.675603595979828};
+	float cs[] = {0, 1.351207191959657, -1.702414383919315, 1.351207191959657};
+	float cd[] = {0.675603595979828, -0.175603595979828, -0.175603595979828, 0.675603595979828};
 
 	bool* active = new bool[NPARTICLE];
 	float* radius = new float[NPARTICLE];
@@ -124,12 +124,12 @@ void Simulation::core() {
 							particles[p2].position = particles[p2].position - cVector * (particles[p2].mass / (particles[p1].mass + particles[p2].mass));
 	
 							Vector3 vrVector = particles[p1].velocity - particles[p2].velocity;
-							double nvr = vrVector * nVersor;
+							float nvr = vrVector * nVersor;
 							if (abs(nvr) < ZEROTHRESHOLD) {
 								Vector3 nVector = nVersor * particles[p1].radius;
 								particles[p1].position = (particles[p1].position*particles[p1].mass + particles[p2].position*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
 								particles[p1].velocity = (particles[p1].velocity*particles[p1].mass + particles[p2].velocity*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
-								double newRadius = cbrt(pow(particles[p1].radius, 3) + pow(particles[p2].radius, 3));
+								float newRadius = cbrt(pow(particles[p1].radius, 3) + pow(particles[p2].radius, 3));
 								particles[p1].omega = (particles[p1].omega * particles[p1].mass * pow(particles[p1].radius, 2) + particles[p2].omega * particles[p2].mass * pow(particles[p2].radius, 2) + nVector.cross(vrVector) * 5 * particles[p2].mass) / ((particles[p1].mass + particles[p2].mass) * pow(newRadius, 2));
 								particles[p1].mass += particles[p2].mass;
 								particles[p1].radius = newRadius;
@@ -137,7 +137,7 @@ void Simulation::core() {
 								particles[p2].active = false;
 							}
 							else {
-								double Jr = ((EFACTOR + 1) / (1 / particles[p1].mass + 1 / particles[p2].mass)) * nvr;
+								float Jr = ((EFACTOR + 1) / (1 / particles[p1].mass + 1 / particles[p2].mass)) * nvr;
 								particles[p1].velocity = particles[p1].velocity - nVersor * (Jr / particles[p1].mass);
 								particles[p2].velocity = particles[p2].velocity + nVersor * (Jr / particles[p2].mass);
 							}
@@ -180,9 +180,9 @@ void Simulation::core() {
 	}
 }
 
-void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, int N, double* coefc, double* coefd) {
+void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, int N, float* coefc, float* coefd) {
 	Vector3* force = new Vector3[NPARTICLE];
-	const double t = 1.0 / (FRAMERATE * FRAMESTEP);
+	const float t = 1.0 / (FRAMERATE * FRAMESTEP);
 
 	for (int n = 0; n < N; n++) {
 		for (int p1 = 0; p1 < NPARTICLE; p1++) {
@@ -190,7 +190,7 @@ void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, i
 			for (int p2 = p1 + 1; p2 < NPARTICLE; p2++) {
 				if (!particles[p2].active) continue;
 				Vector3 dVector = particles[p2].position - particles[p1].position;
-				double distance = dVector.norm();
+				float distance = dVector.norm();
 				Vector3 curForce = dVector.versor() * particles[p1].mass * particles[p2].mass / pow(distance, 2);
 				force[p1] = force[p1] + curForce;
 				force[p2] = force[p2] - curForce;
@@ -211,12 +211,32 @@ void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, i
 
 void Simulation::saveFrame (fstream& outFile, Particle* particles, int particleNumber) {
 	for (int i = 0; i < particleNumber; i++) {
-		if (particles[i].active)
-			outFile << particles[i].radius << ":" << particles[i].position.x << "," << particles[i].position.y << "," << particles[i].position.z << ";" << particles[i].angle << "\t";
-		else
-			outFile << "0" << "\t";
+		outFile.write((char *)(&(particles[i].active)), sizeof(bool));
+	}	
+	for (int i = 0; i < particleNumber; i++) {
+		outFile.write((char *)(&(particles[i].radius)), sizeof(float));
+	}	
+	for (int i = 0; i < particleNumber; i++) {
+		outFile.write((char *)(&(particles[i].position.x)), sizeof(float));
+	}	
+	for (int i = 0; i < particleNumber; i++) {
+		outFile.write((char *)(&(particles[i].position.y)), sizeof(float));
+	}	
+	for (int i = 0; i < particleNumber; i++) {
+		outFile.write((char *)(&(particles[i].position.z)), sizeof(float));
+	}	
+	for (int i = 0; i < particleNumber; i++) {
+		outFile.write((char *)(&(particles[i].angle)), sizeof(float));
+	}	
+	for (int i = 0; i < particleNumber; i++) {
+		outFile.write((char *)(&(particles[i].omega.x)), sizeof(float));
+	}	
+	for (int i = 0; i < particleNumber; i++) {
+		outFile.write((char *)(&(particles[i].omega.y)), sizeof(float));
+	}	
+	for (int i = 0; i < particleNumber; i++) {
+		outFile.write((char *)(&(particles[i].omega.z)), sizeof(float));
 	}
-	outFile << "\n";
 }
 
 void Simulation::saveProgress(char* ofName, Particle* particles, int particleNumber, int frameStep) {
@@ -236,7 +256,7 @@ void Simulation::saveProgress(char* ofName, Particle* particles, int particleNum
 }
 
 void Simulation::printProgress(int currentFrame, int totalFrames) {
-	double percentage = ((double)currentFrame / (double)totalFrames) * 100;
+	float percentage = ((float)currentFrame / (float)totalFrames) * 100;
 	cout << "\r[";
 	for (int i = 0; i < 50; i++) {
 		if (i == 24) cout << round(percentage) << " %";

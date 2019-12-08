@@ -7,20 +7,20 @@
 
 class Particle {
 private:
-	double random(double min, double max) { return ((double)rand() / RAND_MAX) * (max - min) + min; }
+	float random(float min, float max) { return ((float)rand() / RAND_MAX) * (max - min) + min; }
 
 public:
 	bool active = true;
-	double mass, radius, angle;
+	float mass, radius, angle;
 	Vector3 position, velocity, omega;
 	Particle ();
-	Particle (double, double);
-	Particle (double, double, Vector3, Vector3, double, Vector3);
+	Particle (float, float);
+	Particle (float, float, Vector3, Vector3, float, Vector3);
 	~Particle ();
 	
-	void positionStep (double, Vector3&);
-	void velocityStep (double, Vector3&);
-	void angularStep (double);
+	void positionStep (float, Vector3&);
+	void velocityStep (float, Vector3&);
+	void angularStep (float);
 	void initialize ();
 };
 

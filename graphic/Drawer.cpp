@@ -25,24 +25,13 @@ void Drawer::drawSphere(GLfloat x, GLfloat y, GLfloat z, GLfloat radius, GLfloat
 		glColor3f(1.0, 1.0, 1.0);
 		glTranslatef(x, y, z);
 		glRotatef(angle * 180 / M_PI, xRot, yRot, zRot);
-		glutSolidSphere(radius, 50, 50);
+		glutSolidSphere(radius, 16, 16);
 
 		glColor3f(1.0, 0, 0);
 		glRotatef(90, 1, 0, 0);
-		
-		gluCylinder(quadratic, ray, ray, height, 32, 32);
-
+		gluCylinder(quadratic, ray, ray, height, 32, 1);
 		glRotatef(90, 0, 1, 0);
-		gluCylinder(quadratic, ray, ray, height, 32, 32);
-	glPopMatrix();
-
-	
-
-	//this will create a red circle that identify the rotation of the sphere
-	glPushMatrix();
-		
-		glTranslatef(x, y ,z);
-		
+		gluCylinder(quadratic, ray, ray, height, 32, 1);
 	glPopMatrix();
 }
 

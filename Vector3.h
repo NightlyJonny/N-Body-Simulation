@@ -3,19 +3,19 @@
 
 class Vector3 {
 public:
-	double x, y, z;
+	float x, y, z;
 	Vector3 ();
-	Vector3 (double, double, double);
+	Vector3 (float, float, float);
 	~Vector3 ();
 
 	Vector3 operator+ (const Vector3&);
 	Vector3 operator- (const Vector3&);
-	Vector3 operator* (double);
-	double operator* (const Vector3&);
-	Vector3 operator/ (double);
+	Vector3 operator* (float);
+	float operator* (const Vector3&);
+	Vector3 operator/ (float);
 	Vector3 cross (const Vector3&) const;
 
-	double norm () const;
+	float norm () const;
 	Vector3 versor () const;
 };
 
