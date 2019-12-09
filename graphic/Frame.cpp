@@ -25,7 +25,7 @@ Frame::Frame(int x, int y, int w, int h, const char* l) : Fl_Gl_Window(x, y, w, 
 	//Camera initial position
 	cameraPos[0] = 0;
 	cameraPos[1] = 0;
-	cameraPos[2] = 10;
+	cameraPos[2] = 0;
 
 	angle = 0;
 
@@ -73,7 +73,7 @@ void Frame::draw() {
 		glLoadIdentity();                                      // Reset The Modelview Matrix
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);    // Clear The Screen And The Depth Buffer
 		glLoadIdentity();                                      // Reset The View
-		gluLookAt(cameraPos[0], cameraPos[1], cameraPos[2], 0, 0, 0, 0, 1, 0);        // Position - View  - Up Vector
+		gluLookAt(cameraPos[0], cameraPos[1], cameraPos[2], 0, 0, -1, 0, 1, 0);        // Position - View  - Up Vector
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 
@@ -88,17 +88,18 @@ void Frame::draw() {
 		if(middleDown){
 			float degree = -atan2(pixel_h()/2 - Fl::event_y(), pixel_w()/2 - Fl::event_x());
 			float ray = pow(pow(pixel_h()/2 - Fl::event_y(), 2) + pow(pixel_w()/2 - Fl::event_x(), 2), 1./2);
-			xshift += cos(degree) * ray / 400;
-			yshift += sin(degree) * ray / 400;
+			xshift += (cos(degree) * ray / 400) * cos(angle);
+			yshift += (sin(degree) * ray / 400);
+			zshift += (cos(degree) * ray / 400) * sin(angle);
 		}
 	}else{
 		float step = 0.2;
 		for (const auto &pair : buttDown) {
 			if(pair.second == true){
-				if(pair.first == A) xshift += step;
-				if(pair.first == D) xshift -= step;
-				if(pair.first == S) zshift -= step;
-				if(pair.first == W) zshift += step;
+				if(pair.first == A) xshift += step*cos(angle), zshift += step*sin(angle);
+				if(pair.first == D) xshift -= step*cos(angle), zshift -= step*sin(angle);
+				if(pair.first == S) xshift += step*sin(angle), zshift -= step*cos(angle);
+				if(pair.first == W) xshift -= step*sin(angle), zshift += step*cos(angle);
 				if(pair.first == Z) yshift += step;
 				if(pair.first == Q) yshift -= step;
 			}
@@ -107,7 +108,8 @@ void Frame::draw() {
 
 	glPushMatrix();
 		glScalef(zoom, zoom, zoom);
-		glTranslatef(xshift, yshift, zshift);
+		glRotatef(angle * 180 / M_PI, 0, 1, 0);
+		glTranslatef(xshift, yshift, zshift - 40);
 		drawer->draw_scene();
 
 		form->updateTime(*frames * 1. / FRAMERATE);
@@ -119,7 +121,6 @@ void Frame::draw() {
 
 int Frame::handle(int event) {
 
-	float degree = 0;
 	switch (event)
 	{
 		case FL_DRAG:
@@ -155,8 +156,8 @@ int Frame::handle(int event) {
 				}
 			}else{
 
-				if (keycode == LEFT) angle += 2; // Left arrow
-				if (keycode == RIGHT) angle -= 2; // Right arrow
+				if (keycode == LEFT) angle += 0.05; // Left arrow
+				if (keycode == RIGHT) angle -= 0.05; // Right arrow
 			}
 			
 			if(!asteroids)
