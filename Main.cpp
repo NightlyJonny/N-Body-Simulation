@@ -27,6 +27,8 @@ struct SettingsWidget {
 	Fl_Input* fsTxt;
 	Fl_Input* pnTxt;
 	Fl_Check_Button* outChk;
+	Fl_Input* seedTxt;
+	Fl_Check_Button* randomChk;
 };
 
 void idle_cb(void*) {
@@ -34,9 +36,9 @@ void idle_cb(void*) {
 	form->getFrame()->redraw();
 }
 
-void start(bool gui, string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber) {
+void start(bool gui, string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, unsigned long int seed) {
 
-	sim = new Simulation(outFile, duration, frameStep, particleNumber, gui);
+	sim = new Simulation(outFile, duration, frameStep, particleNumber, gui, seed);
 	std::thread heavyWork([]() { sim->core(); });
 
 	//Create and execute the graphic part
@@ -62,6 +64,8 @@ void start_cb(Fl_Widget* o, void* settings) {
 	unsigned int duration = stoi(sw->durationTxt->value());
 	unsigned int frameStep = stoi(sw->fsTxt->value());
 	unsigned int particleNumber = stoi(sw->pnTxt->value());
+	unsigned long int seed = stoi(sw->seedTxt->value());
+	seed = (sw->randomChk->value() ? time(0) : seed);
 	string outFile = string(sw->outFileTxt->value());
 
 	if(!gui && duration == 0) //The program can't start without gui if duration value is 0
@@ -74,11 +78,11 @@ void start_cb(Fl_Widget* o, void* settings) {
 	}
 
 	if(sw->typeChoice->value() == 3){
-		start(gui, outFile, 0, 0, 0);
+		start(gui, outFile, 0, 0, 0, 0);
 		return;
 	}
 
-	start(gui, outFile, duration, frameStep, particleNumber);
+	start(gui, outFile, duration, frameStep, particleNumber, seed);
 }
 
 void quit_cb(Fl_Widget* o, void*) {
@@ -124,6 +128,19 @@ void choice_cb(Fl_Widget* o, void* settings) {
 	}
 }
 
+void rand_cb(Fl_Widget* o, void* txt) {
+
+	Fl_Check_Button* check = (Fl_Check_Button*)o;
+	Fl_Input* seedTxt = (Fl_Input*)txt;
+
+	if (check->value()) {
+		seedTxt->deactivate();
+	}
+	else {
+		seedTxt->activate();
+	}
+}
+
 int createWindow(){
 
 	SettingsWidget* setWidgets = new SettingsWidget();
@@ -163,11 +180,20 @@ int createWindow(){
 		pnTxt.value("200");
 		setWidgets->pnTxt = &pnTxt;
 
+		Fl_Input seedTxt (140, 270, 140, 30, "Generator seed:");
+		seedTxt.value("1");
+		seedTxt.deactivate();
+		setWidgets->seedTxt = &seedTxt;
+		Fl_Check_Button randomChk (290, 270, 90, 30, "Random");
+		randomChk.value(true);
+		setWidgets->randomChk = &randomChk;
+
 	win.end();
 	startBtn.callback(start_cb, setWidgets);
 	quitBtn.callback(quit_cb);
 	outFileChk.callback(out_cb, &outFileTxt);
 	typeChoice.callback(choice_cb, setWidgets);
+	randomChk.callback(rand_cb, &seedTxt);
 
 	win.show();
 	return Fl::run();

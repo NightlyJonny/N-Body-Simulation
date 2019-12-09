@@ -22,7 +22,7 @@ link:
 	-o ../Main *.o -Wl,-Bsymbolic-functions -Wl,-z,relro -Wl,-z,now \
 	-lfltk_gl -lfltk -lX11 -pthread -lglut -lGLU -lGL
 run:
-	./Main Outputfile.txt
+	./Main
 clear:
 	cd compiled; \
 	rm *.o

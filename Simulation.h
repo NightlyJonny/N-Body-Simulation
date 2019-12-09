@@ -29,7 +29,7 @@ private:
 	const int targetDt = 1000000 / FRAMERATE;
 
 public:
-	Simulation(string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool frameLimit);
+	Simulation(string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool frameLimit, unsigned long int seed);
 	void core();
 	void saveFrame(fstream& outFile, Particle* particles, int particleNumber);
 	void saveProgress(char* ofName, Particle* particles, int particleNumber, int frameStep);

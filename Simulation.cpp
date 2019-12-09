@@ -6,9 +6,9 @@ void sigHandler(int sig) {
 	stopped = true;
 }
 
-Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool fl) {
+Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool fl, unsigned long int seed) {
 	signal(SIGINT, sigHandler);
-	srand(time(0));
+	srand(seed);
 
 	// Real simulation or just the viewer
 	if ((frameStep != 0) && (particleNumber != 0)){
