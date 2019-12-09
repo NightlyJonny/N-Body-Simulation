@@ -11,6 +11,10 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <iterator> 
+#include <map>
+#include <vector>
+
 #include "Drawer.h"
 #include "../Simulation.h"
 
@@ -21,6 +25,11 @@ private:
 	int* frames;
 	int keycode;
 	bool asteroids = false;
+	
+	map<int, bool> buttDown; 
+	bool vision3d = false;
+	float cameraPos[3];
+	float angle;
 
 	bool middleDown = false;
 
@@ -30,7 +39,7 @@ private:
 	void init();
 
 public:
-	double ruotaX, ruotaY, ruotaZ, zoom = 0.2, xshift = 0, yshift = 0;
+	double ruotaX, ruotaY, ruotaZ, zoom = 0.2, xshift = 0, yshift = 0, zshift = 0;
 	Frame(int x, int y, int w, int h, const char* l = 0);
 	void setSimulation(Simulation* sim);
 };
