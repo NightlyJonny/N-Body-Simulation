@@ -22,6 +22,8 @@ public:
 	void velocityStep (float, Vector3&);
 	void angularStep (float);
 	void initialize ();
+	void energyInitialize (float, float);
+	void momentumInitialize (float);
 };
 
 #endif /* PARTICLE_H */

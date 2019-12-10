@@ -19,7 +19,6 @@
 Form* form = nullptr;
 Simulation* sim;
 
-
 struct SettingsWidget {
 	Fl_Choice* typeChoice;
 	Fl_Input* outFileTxt;
@@ -65,7 +64,7 @@ void start_cb(Fl_Widget* o, void* settings) {
 	unsigned int frameStep = stoi(sw->fsTxt->value());
 	unsigned int particleNumber = stoi(sw->pnTxt->value());
 	unsigned long int seed = stoi(sw->seedTxt->value());
-	seed = (sw->randomChk->value() ? time(0) : seed);
+	seed = (sw->randomChk->value() ? time(0) * rand() : seed);
 	string outFile = string(sw->outFileTxt->value());
 
 	if(!gui && duration == 0) //The program can't start without gui if duration value is 0
@@ -118,6 +117,8 @@ void choice_cb(Fl_Widget* o, void* settings) {
 		sw->durationTxt->deactivate();
 		sw->fsTxt->deactivate();
 		sw->pnTxt->deactivate();
+		sw->seedTxt->deactivate();
+		sw->randomChk->deactivate();
 	}
 	else {
 		sw->outFileTxt->label("Output file:");
@@ -125,6 +126,11 @@ void choice_cb(Fl_Widget* o, void* settings) {
 		sw->fsTxt->activate();
 		sw->pnTxt->activate();
 		sw->outChk->activate();
+		sw->randomChk->activate();
+		if (sw->randomChk->value())
+			sw->seedTxt->deactivate();
+		else
+			sw->seedTxt->activate();
 	}
 }
 

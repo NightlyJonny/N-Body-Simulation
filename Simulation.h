@@ -15,6 +15,8 @@
 #define EFACTOR 0.2
 #define KFACTOR 0 // 0.01
 #define ZEROTHRESHOLD 0.2
+#define DENSITY 0.2
+#define PI 3.14159265359
 using namespace std;
 
 class Simulation {

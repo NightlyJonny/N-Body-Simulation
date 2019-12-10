@@ -42,8 +42,18 @@ Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameSt
 		}
 		else {
 			for (int p = 0; p < NPARTICLE; p++) {
-				particles[p].initialize();
+				particles[p].energyInitialize(20, 0);
 			}
+
+			float energy = 0;
+			for (int p1 = 0; p1 < NPARTICLE; p1++){
+				energy += 0.5 * particles[p1].mass * pow(particles[p1].velocity.norm(), 2);
+				for (int p2 = 0; p2 < NPARTICLE; p2++){
+					if (p1 == p2) continue;
+					energy += (particles[p1].mass * particles[p2].mass) / (particles[p1].position - particles[p2].position).norm();
+				}
+			}
+			cout << energy << endl;
 		}
 	
 		outFile.open(outFileName.c_str(), ios::out | ios::binary | (resuming ? ios::app : ios::trunc));
@@ -171,7 +181,7 @@ void Simulation::core() {
 		frames++;
 		auto end = chrono::high_resolution_clock::now();
 		int deltaTime = chrono::duration_cast<chrono::microseconds>(end - start).count();
-		debugText = to_string(1000000 / deltaTime) + " fps";
+		// debugText = to_string(1000000 / deltaTime) + " fps";
 		if (frameLimit) {
 			if (deltaTime < targetDt) {
 				this_thread::sleep_for(chrono::microseconds(targetDt - deltaTime));
