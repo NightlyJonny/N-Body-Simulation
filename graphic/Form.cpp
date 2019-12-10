@@ -25,18 +25,24 @@ void Form::CreateMyWindow(void) {
 		scene = new Frame(border, border, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
 		form->resizable(scene);
 
-		timeText = new Fl_Output(200, h_est - 40 - border, 150, 40, "");
-		timeText->box(FL_UP_BOX);
-		timeText->labelsize(20);
-		timeText->align(FL_ALIGN_RIGHT);
-
 		debugText = new Fl_Output(border, h_est - 40 - border, 150, 40, "");
 		debugText->box(FL_UP_BOX);
 		debugText->labelsize(20);
 		debugText->align(FL_ALIGN_RIGHT);
 
+		timeText = new Fl_Output(200, h_est - 40 - border, 150, 40, "");
+		timeText->box(FL_UP_BOX);
+		timeText->labelsize(20);
+		timeText->align(FL_ALIGN_RIGHT);
+
+		infoText = new Fl_Output(400, h_est - 40 - border, 150, 40, "");
+		infoText->box(FL_UP_BOX);
+		infoText->labelsize(20);
+		infoText->align(FL_ALIGN_RIGHT);
+
 	form->end();
 	
+	updateInfo("3D Vision: off");
 }
 
 void Form::setSimulation(Simulation* sim){
@@ -66,6 +72,12 @@ void Form::updateDebug(string text) {
 
 	debugText->value(text.c_str());
 	debugText->show();
+}
+
+void Form::updateInfo(string text) {
+
+	infoText->value(text.c_str());
+	infoText->show();
 }
 
 void Form::show(){

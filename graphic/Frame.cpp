@@ -22,11 +22,6 @@ Frame::Frame(int x, int y, int w, int h, const char* l) : Fl_Gl_Window(x, y, w, 
 		buttDown.insert(pair<int, bool>(n, false)); 
 	}
 
-	//Camera initial position
-	cameraPos[0] = 0;
-	cameraPos[1] = 0;
-	cameraPos[2] = 0;
-
 	angle = 0;
 
 };
@@ -42,6 +37,7 @@ void Frame::setSimulation(Simulation* sim) {
 	angle = 0;
 	xshift = 0;
 	yshift= 0;
+	zshift = 0;
 	frames = sim->getFrameRef();
 }
 
@@ -73,7 +69,7 @@ void Frame::draw() {
 		glLoadIdentity();                                      // Reset The Modelview Matrix
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);    // Clear The Screen And The Depth Buffer
 		glLoadIdentity();                                      // Reset The View
-		gluLookAt(cameraPos[0], cameraPos[1], cameraPos[2], 0, 0, -1, 0, 1, 0);        // Position - View  - Up Vector
+		gluLookAt(0, 0, 0, 0, 0, -1, 0, 1, 0);        // Position - View  - Up Vector
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 
@@ -85,7 +81,7 @@ void Frame::draw() {
 
 	if(!vision3d){
 		//This move the scene is the mouse right button is pressed
-		if(middleDown){
+		if(rightDown){
 			float degree = -atan2(pixel_h()/2 - Fl::event_y(), pixel_w()/2 - Fl::event_x());
 			float ray = pow(pow(pixel_h()/2 - Fl::event_y(), 2) + pow(pixel_w()/2 - Fl::event_x(), 2), 1./2);
 			xshift += (cos(degree) * ray / 400) * cos(angle);
@@ -124,11 +120,16 @@ int Frame::handle(int event) {
 	switch (event)
 	{
 		case FL_DRAG:
-			/*if( Fl::event_state() == FL_BUTTON3){
-				float ray = pow(pow(pixel_h()/2 - Fl::event_y(), 2) + pow(pixel_w()/2 - Fl::event_x(), 2), 1./2);
-				if(ray > 100) ray = 100;
-				angle += ray * (M_PI/50) / 100;
-			}*/
+			
+			if( Fl::event_state() == FL_BUTTON3 && vision3d){
+				if(Fl::event_x() < mouseInitPos[0])
+					angle -= angleStep;
+				else
+					angle += angleStep;
+
+				mouseInitPos[0] = Fl::event_x();
+				mouseInitPos[1] = Fl::event_y();
+			}
 			break;
 
 		case FL_MOUSEWHEEL:
@@ -154,17 +155,18 @@ int Frame::handle(int event) {
 					if (keycode == UP) yshift -= SHIFTSTEP; // Up arrow
 					if (keycode == DOWN) yshift += SHIFTSTEP; // Down arrow
 				}
-			}else{
-
-				if (keycode == LEFT) angle += 0.05; // Left arrow
-				if (keycode == RIGHT) angle -= 0.05; // Right arrow
 			}
 			
 			if(!asteroids)
 				if (keycode == SPACE) form->sim->togglePause(); // Spacebar
 
-			if(keycode == X) //Button X
+			if(keycode == X){ //Button X
 				vision3d = !vision3d;
+				if(vision3d)
+					form->updateInfo("3D Vision: on");
+				else
+					form->updateInfo("3D Vision: off");
+			}
 			
 			buttDown[keycode] = true; //Set the button on "Pressed" status
 
@@ -176,12 +178,15 @@ int Frame::handle(int event) {
 
 			break;
 		case FL_PUSH:
-			if(Fl::event_button() == FL_RIGHT_MOUSE)
-				this->middleDown = true;
+			if(Fl::event_button() == FL_RIGHT_MOUSE){
+				mouseInitPos[0] = Fl::event_x();
+				mouseInitPos[1] = Fl::event_y();
+				this->rightDown = true;
+			}
 			break;
 		case FL_RELEASE:
 			if(Fl::event_button() == FL_RIGHT_MOUSE)
-				this->middleDown = false;
+				this->rightDown = false;
 			break;
 		default:
 			break;

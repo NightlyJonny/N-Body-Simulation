@@ -15,6 +15,7 @@ private:
 
 	Fl_Output* timeText;
 	Fl_Output* debugText;
+	Fl_Output* infoText;
 
 	int floatToInt(float num, int afterComma) { return round(num * pow(10, afterComma)); }
 	void CreateMyWindow();
@@ -25,6 +26,7 @@ public:
 	void setSimulation(Simulation*);
 	void updateTime(float);
 	void updateDebug(string);
+	void updateInfo(string text);
 
 	void show();
 
