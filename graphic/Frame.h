@@ -25,12 +25,14 @@ private:
 	int* frames;
 	int keycode;
 	bool asteroids = false;
-	
+
 	int mouseInitPos[2]; //This store the initial coordinates of the mouse usefu; for rotate the camera
 	float angleStep = 0.02; //How much the angle is augmented at every step
 	map<int, bool> buttDown; //Indicates which buttons are pressed
 	bool vision3d = false; //Is the 3d vision enabled?
-	float angle; //Angle of rotation of the camera
+	float pitch, yaw; //Angle for the rotation of the camera
+	float angle; //Angle for 2D visualizer
+	float angleLimit = 70; // The limit of the yaw angle
 
 	bool rightDown = false; //store if the right mouse button is pressed
 

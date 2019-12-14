@@ -22,6 +22,8 @@ Frame::Frame(int x, int y, int w, int h, const char* l) : Fl_Gl_Window(x, y, w, 
 		buttDown.insert(pair<int, bool>(n, false)); 
 	}
 
+	pitch = 0;
+	yaw = 0;
 	angle = 0;
 
 };
@@ -38,6 +40,8 @@ void Frame::setSimulation(Simulation* sim) {
 	xshift = 0;
 	yshift= 0;
 	zshift = 0;
+	pitch = 0;
+	yaw = 0;
 	frames = sim->getFrameRef();
 }
 
@@ -69,7 +73,6 @@ void Frame::draw() {
 		glLoadIdentity();                                      // Reset The Modelview Matrix
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);    // Clear The Screen And The Depth Buffer
 		glLoadIdentity();                                      // Reset The View
-		gluLookAt(0, 0, 0, 0, 0, -1, 0, 1, 0);        // Position - View  - Up Vector
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 
@@ -84,18 +87,39 @@ void Frame::draw() {
 		if(rightDown){
 			float degree = -atan2(pixel_h()/2 - Fl::event_y(), pixel_w()/2 - Fl::event_x());
 			float ray = pow(pow(pixel_h()/2 - Fl::event_y(), 2) + pow(pixel_w()/2 - Fl::event_x(), 2), 1./2);
-			xshift += (cos(degree) * ray / 400) * cos(angle);
+			xshift += (cos(degree) * ray / 400) * cos(pitch);
 			yshift += (sin(degree) * ray / 400);
-			zshift += (cos(degree) * ray / 400) * sin(angle);
+			zshift += (cos(degree) * ray / 400) * sin(pitch);
 		}
 	}else{
+
+		if(rightDown){
+			float deltax = pixel_w()/2 - Fl::event_x();
+			float deltay = pixel_h()/2 - Fl::event_y();
+			
+			if(deltax != 0 && deltay != 0){
+
+				float mod = sqrt(pow(deltax, 2) + pow(deltay, 2));
+				deltax /= mod;
+				deltay /= mod;
+
+				pitch -= deltax / 100;
+				yaw -= deltay / 100;
+
+				if(abs(yaw * 180 / M_PI) > angleLimit){
+					yaw = copysign(angleLimit, yaw) / 180 * M_PI;
+				}
+			}
+		}
+
 		float step = 0.2;
 		for (const auto &pair : buttDown) {
 			if(pair.second == true){
-				if(pair.first == A) xshift += step*cos(angle), zshift += step*sin(angle);
-				if(pair.first == D) xshift -= step*cos(angle), zshift -= step*sin(angle);
-				if(pair.first == S) xshift += step*sin(angle), zshift -= step*cos(angle);
-				if(pair.first == W) xshift -= step*sin(angle), zshift += step*cos(angle);
+
+				if(pair.first == A) xshift += step*cos(pitch)*cos(yaw), zshift += step*sin(pitch)*cos(yaw), yshift += step*sin(yaw);
+				if(pair.first == D) xshift -= step*cos(pitch)*cos(yaw), zshift -= step*sin(pitch)*cos(yaw), yshift -= step*sin(yaw);
+				if(pair.first == S) xshift += step*sin(pitch)*cos(yaw), zshift -= step*cos(pitch)*cos(yaw), yshift -= step*sin(yaw);
+				if(pair.first == W) xshift -= step*sin(pitch)*cos(yaw), zshift += step*cos(pitch)*cos(yaw), yshift += step*sin(yaw);
 				if(pair.first == Z) yshift += step;
 				if(pair.first == Q) yshift -= step;
 			}
@@ -104,7 +128,9 @@ void Frame::draw() {
 
 	glPushMatrix();
 		glScalef(zoom, zoom, zoom);
-		glRotatef(angle * 180 / M_PI, 0, 1, 0);
+		glRotatef(pitch * 180 / M_PI, 0, 1, 0);
+		glRotatef(yaw * 180 / M_PI, cos(pitch), 0, sin(pitch));
+		
 		glTranslatef(xshift, yshift, zshift - 40);
 		drawer->draw_scene();
 
@@ -119,21 +145,10 @@ int Frame::handle(int event) {
 
 	switch (event)
 	{
-		case FL_DRAG:
-			
-			if( Fl::event_state() == FL_BUTTON3 && vision3d){
-				if(Fl::event_x() < mouseInitPos[0])
-					angle -= angleStep;
-				else
-					angle += angleStep;
-
-				mouseInitPos[0] = Fl::event_x();
-				mouseInitPos[1] = Fl::event_y();
-			}
-			break;
 
 		case FL_MOUSEWHEEL:
 			if ((zoom - Fl::event_dy() * 0.01 < MAXZOOM) && (zoom - Fl::event_dy() * 0.01 > MINZOOM)) zoom -= Fl::event_dy() * 0.01;
+			cout << "miao" << endl;
 			break;
 		
 		case FL_KEYDOWN:
@@ -179,8 +194,6 @@ int Frame::handle(int event) {
 			break;
 		case FL_PUSH:
 			if(Fl::event_button() == FL_RIGHT_MOUSE){
-				mouseInitPos[0] = Fl::event_x();
-				mouseInitPos[1] = Fl::event_y();
 				this->rightDown = true;
 			}
 			break;
