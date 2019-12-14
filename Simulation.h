@@ -35,7 +35,6 @@ public:
 	void core();
 	void saveFrame(fstream& outFile, Particle* particles, int particleNumber);
 	void saveProgress(char* ofName, Particle* particles, int particleNumber, int frameStep);
-	float random(float min, float max);
 	void printProgress(int currentFrame, int totalFrames);
 	void integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, int N, float* coefc, float* coefd);
 	Particle* getParticle() const;

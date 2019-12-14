@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 #include <signal.h>
 #define FRAMERATE 60
 #define EFACTOR 0.2
@@ -37,23 +38,29 @@ void printProgress (unsigned int currentFrame, unsigned int totalFrames) {
 	cout << "]" << flush;
 }
 
-void saveProgress (char* ofName, int NPARTICLE, int FRAMESTEP, float* mass, float* radius, float* Px, float* Py, float* Vx, float* Vy) {
-	ofstream outFile ((string(ofName) + string(".dat")).c_str(), ios::out | ios::trunc | ios::binary);
+void saveProgress (string ofName, unsigned int particleNumber, unsigned int frameStep, bool* active, float* radius, float* mass, float* Px, float* Py, float* Pz, float* angle, float* Wx, float* Wy, float* Wz, float* Vx, float* Vy, float* Vz) {
+	ofstream outFile ((ofName + string(".dat")).c_str(), ios::out | ios::trunc | ios::binary);
 	if (!outFile.is_open()) {
 		cerr << "Error opening output file." << endl;
 		return;
 	}
 
-	outFile.write((char*)(&NPARTICLE), sizeof(int));
-	outFile.write((char*)(&FRAMESTEP), sizeof(int));
-	for (int i = 0; i < NPARTICLE; i++) {
-		outFile.write((char*)(mass + i), sizeof(float));
-		outFile.write((char*)(radius + i), sizeof(float));
-		outFile.write((char*)(Px + i), sizeof(float));
-		outFile.write((char*)(Py + i), sizeof(float));
-		outFile.write((char*)(Vx + i), sizeof(float));
-		outFile.write((char*)(Vy + i), sizeof(float));
-	}
+	outFile.write((char *)(&particleNumber), sizeof(unsigned int));
+	outFile.write((char *)(&frameStep), sizeof(unsigned int));
+
+	outFile.write((char *)active, particleNumber * sizeof(bool));
+	outFile.write((char *)radius, particleNumber * sizeof(float));
+	outFile.write((char *)mass, particleNumber * sizeof(float));
+	outFile.write((char *)Px, particleNumber * sizeof(float));
+	outFile.write((char *)Py, particleNumber * sizeof(float));
+	outFile.write((char *)Pz, particleNumber * sizeof(float));
+	outFile.write((char *)Vx, particleNumber * sizeof(float));
+	outFile.write((char *)Vy, particleNumber * sizeof(float));
+	outFile.write((char *)Vz, particleNumber * sizeof(float));
+	outFile.write((char *)angle, particleNumber * sizeof(float));
+	outFile.write((char *)Wx, particleNumber * sizeof(float));
+	outFile.write((char *)Wy, particleNumber * sizeof(float));
+	outFile.write((char *)Wz, particleNumber * sizeof(float));
 
 	outFile.close();
 }
@@ -178,14 +185,14 @@ int main(int argc, char** argv) {
 	signal(SIGINT, sigHandler);
 	srand(time(0));
 
-	char* outFileName;
+	string outFileName;
 	unsigned int DURATION = 60, FRAMESTEP = 10, NPARTICLE = 500; // Optional terminal paramenters IN THIS ORDER!
-	if (argc > 1) outFileName = argv[argc-1];
+	if (argc > 1) outFileName = string(argv[argc-1]);
 	else {
 		cerr << "You must specify an output or save file.\nUsage: ./core [DURATION] [FRAMESTEP] [NPARTICLE] \"OutputFile.txt\"\nor\n./core \"ProgressData.dat\"" << endl;
 		return 1;
 	}
-	bool resuming = string(outFileName).substr(string(outFileName).length()-4, 4).compare(string(".dat")) == 0;
+	bool resuming = outFileName.substr(outFileName.length()-4, 4).compare(string(".dat")) == 0;
 	if (!resuming) {
 		if (argc > 2) NPARTICLE = stoi(argv[argc-2]);
 		if (argc > 3) FRAMESTEP = stoi(argv[argc-3]);
@@ -231,31 +238,31 @@ int main(int argc, char** argv) {
 	// Initialization objects
 	if (resuming) {
 		cout << "Save file specified, restoring progress..." << endl;
-		ifstream inFile (outFileName, ios::in | ios::binary);
+		ifstream inFile (outFileName.c_str(), ios::in | ios::binary);
 		if (!inFile.is_open()) {
 			cerr << "Error opening input file." << endl;
 			return 2;
 		}
 
-		inFile.read((char*)&NPARTICLE, sizeof(int));
-		inFile.read((char*)&FRAMESTEP, sizeof(int));
-		for (int p = 0; p < NPARTICLE; p++) {
-			inFile.read((char*)(mass+p), sizeof(float));
-			inFile.read((char*)(radius+p), sizeof(float));
-			inFile.read((char*)(Px+p), sizeof(float));
-			inFile.read((char*)(Py+p), sizeof(float));
-			inFile.read((char*)(Vx+p), sizeof(float));
-			inFile.read((char*)(Vy+p), sizeof(float));
+		inFile.read((char *)(&NPARTICLE), sizeof(unsigned int));
+		inFile.read((char *)(&FRAMESTEP), sizeof(unsigned int));
 
-			if (isnan(mass[p])) cerr << "Mass read problem :(" << endl;
-			if (isnan(radius[p])) cerr << "Radius read problem :(" << endl;
-			if (isnan(Px[p])) cerr << "Px read problem :(" << endl;
-			if (isnan(Py[p])) cerr << "Py read problem :(" << endl;
-			if (isnan(Vx[p])) cerr << "Vx read problem :(" << endl;
-			if (isnan(Vy[p])) cerr << "Vy read problem :(" << endl;
-		}
+		inFile.read((char *)active, NPARTICLE * sizeof(bool));
+		inFile.read((char *)radius, NPARTICLE * sizeof(float));
+		inFile.read((char *)mass, NPARTICLE * sizeof(float));
+		inFile.read((char *)Px, NPARTICLE * sizeof(float));
+		inFile.read((char *)Py, NPARTICLE * sizeof(float));
+		inFile.read((char *)Pz, NPARTICLE * sizeof(float));
+		inFile.read((char *)Vx, NPARTICLE * sizeof(float));
+		inFile.read((char *)Vy, NPARTICLE * sizeof(float));
+		inFile.read((char *)Vz, NPARTICLE * sizeof(float));
+		inFile.read((char *)angle, NPARTICLE * sizeof(float));
+		inFile.read((char *)Wx, NPARTICLE * sizeof(float));
+		inFile.read((char *)Wy, NPARTICLE * sizeof(float));
+		inFile.read((char *)Wz, NPARTICLE * sizeof(float));
+
 		inFile.close();
-		strcpy(outFileName, string(outFileName).substr(0, string(outFileName).length()-4).c_str());
+		outFileName = outFileName.substr(0, outFileName.length()-4);
 	}
 	else {
 		for (int p = 0; p < NPARTICLE; p++) {
@@ -274,17 +281,18 @@ int main(int argc, char** argv) {
 			Vx[p] = (rx/rn) * rvn;
 			Vy[p] = (ry/rn) * rvn;
 			Vz[p] = (rz/rn) * rvn;
-
-			Fx[p] = -KFACTOR * Px[p];
-			Fy[p] = -KFACTOR * Py[p];
-			Fz[p] = -KFACTOR * Pz[p];
-
-			Sx[p] = Sy[p] = Sz[p] = Jx[p] = Jy[p] = Jz[p] = 0;
 		}
+	}
+	for (int p = 0; p < NPARTICLE; p++) {
+		Fx[p] = -KFACTOR * Px[p];
+		Fy[p] = -KFACTOR * Py[p];
+		Fz[p] = -KFACTOR * Pz[p];
+
+		Sx[p] = Sy[p] = Sz[p] = Jx[p] = Jy[p] = Jz[p] = 0;
 	}
 
 	// Output file initialization
-	ofstream outFile (outFileName, ios::out | ios::binary | (resuming ? ios::app : ios::trunc));
+	ofstream outFile (outFileName.c_str(), ios::out | ios::binary | (resuming ? ios::app : ios::trunc));
 	if (!outFile.is_open()) {
 		cerr << "Error opening output file." << endl;
 		return 2;
@@ -334,7 +342,7 @@ int main(int argc, char** argv) {
 	}	
 	cout << "\n";
 	outFile.close();
-	// saveProgress(outFileName, NPARTICLE, FRAMESTEP, mass, radius, Px, Py, Vx, Vy); // STILL NOT WORKING :(
+	// saveProgress (outFileName, NPARTICLE, FRAMESTEP, active, radius, mass, Px, Py, Pz, angle, Wx, Wy, Wz, Vx, Vy, Vz);
 
 	cudaFree(mass);
 	cudaFree(radius);

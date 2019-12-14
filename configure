@@ -1,0 +1,3 @@
+#!/bin/bash
+
+apt install fltk1.3-dev libxft-dev libxinerama-dev freeglut3-dev
