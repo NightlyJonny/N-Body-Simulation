@@ -14,8 +14,9 @@
 #define FRAMERATE 60
 #define EFACTOR 0.2
 #define KFACTOR 0 // 0.01
-#define ZEROTHRESHOLD 0.2
-#define DENSITY 0.2
+#define FUSIONTHRESHOLD 0.2
+#define INITTHRESHOLD 0.1
+#define INITDENSITY 0.1
 #define PI 3.14159265359
 using namespace std;
 
@@ -29,10 +30,13 @@ private:
 	bool pause = false;
 	bool frameLimit;
 	const int targetDt = 1000000 / FRAMERATE;
+	float random(float min, float max) { return ((float)rand() / RAND_MAX) * (max - min) + min; }
 
 public:
 	Simulation(string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool frameLimit, unsigned long int seed);
 	void core();
+	void randomInitialize (Particle* particles, int NPARTICLE);
+	void energyInitialize (Particle* particles, int NPARTICLE, float E0);
 	void saveFrame(fstream& outFile, Particle* particles, int particleNumber);
 	void saveProgress(char* ofName, Particle* particles, int particleNumber, int frameStep);
 	void printProgress(int currentFrame, int totalFrames);
@@ -45,5 +49,8 @@ public:
 	void stop();
 	void terminateSim();
 	unsigned int getDuration() { return (DURATION < UINT_MAX ? DURATION : 0); }
+	float getKinetic (Particle* particles, int NPARTICLE);
+	float getPotential (Particle* particles, int NPARTICLE);
+	float getEnergy (Particle* particles, int NPARTICLE);
 	string debugText = "";
 };

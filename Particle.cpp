@@ -8,33 +8,6 @@ Particle::Particle (float m, float r, Vector3 p, Vector3 v, float a, Vector3 o) 
 
 Particle::~Particle () {}
 
-void Particle::initialize () {
-	Vector3 rpVector (random(-20, 20), random(-20, 20), random(-20, 20));
-	position = rpVector;
-	omega = Vector3(random(-1, 1), random(-1, 1), random(-1, 1));
-	mass = random(0.5, 2);
-	radius = random(0.1, 0.2);
-}
-
-void Particle::energyInitialize (float R, float E0) {
-	const float MAXMASS = 2.0;
-	const float MINMASS = 0.5;
-	Vector3 rpVector;
-	do {
-		rpVector = Vector3(random(-R, R), random(-R, R), random(-R, R));
-	} while (rpVector.norm() > R);
-	position = rpVector;
-	mass = random(MINMASS, MAXMASS);
-	radius = random(0.1, 0.2);
-
-	float v = sqrt( 4 * E0 / (MAXMASS - MINMASS) + 199 * 35 * (MAXMASS - MINMASS) / (72 * R) );
-	velocity = position.versor() * random(0, 2*v);
-}
-
-void Particle::momentumInitialize (float L0) {
-	initialize();
-}
-
 void Particle::positionStep (float dt, Vector3& force) {
 
 	position = position + velocity * dt;

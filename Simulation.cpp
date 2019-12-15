@@ -41,19 +41,7 @@ Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameSt
 			outFileName = outFileName.substr(0, outFileName.length() - 4);
 		}
 		else {
-			for (int p = 0; p < NPARTICLE; p++) {
-				particles[p].energyInitialize(20, 0);
-			}
-
-			float energy = 0;
-			for (int p1 = 0; p1 < NPARTICLE; p1++){
-				energy += 0.5 * particles[p1].mass * pow(particles[p1].velocity.norm(), 2);
-				for (int p2 = 0; p2 < NPARTICLE; p2++){
-					if (p1 == p2) continue;
-					energy += (particles[p1].mass * particles[p2].mass) / (particles[p1].position - particles[p2].position).norm();
-				}
-			}
-			cout << energy << endl;
+			energyInitialize(particles, NPARTICLE, 0);
 		}
 	
 		outFile.open(outFileName.c_str(), ios::out | ios::binary | (resuming ? ios::app : ios::trunc));
@@ -135,7 +123,7 @@ void Simulation::core() {
 	
 							Vector3 vrVector = particles[p1].velocity - particles[p2].velocity;
 							float nvr = vrVector * nVersor;
-							if (abs(nvr) < ZEROTHRESHOLD) {
+							if (abs(nvr) < FUSIONTHRESHOLD) {
 								Vector3 nVector = nVersor * particles[p1].radius;
 								particles[p1].position = (particles[p1].position*particles[p1].mass + particles[p2].position*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
 								particles[p1].velocity = (particles[p1].velocity*particles[p1].mass + particles[p2].velocity*particles[p2].mass) / (particles[p1].mass + particles[p2].mass);
@@ -188,6 +176,65 @@ void Simulation::core() {
 			}
 		}
 	}
+}
+
+void Simulation::randomInitialize (Particle* particles, int NPARTICLE) {
+	float R = cbrt( (3*NPARTICLE) / (4*PI*INITDENSITY) );
+	for (int p = 0; p < NPARTICLE; p++) {
+		Vector3 rpVector (random(-R, R), random(-R, R), random(-R, R));
+		while (rpVector.norm() > R) {
+			rpVector = Vector3(random(-R, R), random(-R, R), random(-R, R));
+		}
+		particles[p].position = rpVector;
+		particles[p].velocity = rpVector.versor() * random(0, 5);
+		particles[p].omega = Vector3(random(-1, 1), random(-1, 1), random(-1, 1));
+		particles[p].mass = random(0.5, 2);
+		particles[p].radius = random(0.1, 0.2);
+	}
+}
+
+void Simulation::energyInitialize (Particle* particles, int NPARTICLE, float E0) {
+	float R = cbrt( (3*NPARTICLE) / (4*PI*INITDENSITY) );
+	for (int p = 0; p < NPARTICLE; p++) {
+		Vector3 rpVector (random(-R, R), random(-R, R), random(-R, R));
+		while (rpVector.norm() > R) {
+			rpVector = Vector3(random(-R, R), random(-R, R), random(-R, R));
+		}
+		particles[p].position = rpVector;
+		particles[p].mass = random(0.5, 2);
+		particles[p].radius = random(0.1, 0.2);
+	}
+
+	do {
+		float targetv2 = 2 * (E0 - getPotential(particles, NPARTICLE)) / (1.25 * NPARTICLE);
+		for (int p = 0; p < NPARTICLE; p++) {
+			particles[p].velocity = particles[p].position.versor() * sqrt(random(0, 2*targetv2));
+		}
+	} while (abs(getEnergy(particles, NPARTICLE) - E0) > INITTHRESHOLD);
+}
+
+float Simulation::getKinetic(Particle* particles, int NPARTICLE) {
+	float K = 0;
+	for (int p = 0; p < NPARTICLE; p++){
+		K += 0.5 * particles[p].mass * pow(particles[p].velocity.norm(), 2) + 0.2 * particles[p].mass * pow(particles[p].radius * particles[p].omega.norm(), 2);
+	}
+	return K;
+}
+
+float Simulation::getPotential(Particle* particles, int NPARTICLE) {
+	float U = 0;
+	for (int p1 = 0; p1 < NPARTICLE; p1++){
+		for (int p2 = 0; p2 < NPARTICLE; p2++){
+			if (p1 == p2) continue;
+			U -= (particles[p1].mass * particles[p2].mass) / (particles[p1].position - particles[p2].position).norm();
+		}
+	}
+	return U;
+}
+
+float Simulation::getEnergy(Particle* particles, int NPARTICLE) {
+
+	return getKinetic(particles, NPARTICLE) + getPotential(particles, NPARTICLE);
 }
 
 void Simulation::integrator(Particle* particles, int NPARTICLE, int FRAMESTEP, int N, float* coefc, float* coefd) {

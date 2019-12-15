@@ -148,7 +148,6 @@ int Frame::handle(int event) {
 
 		case FL_MOUSEWHEEL:
 			if ((zoom - Fl::event_dy() * 0.01 < MAXZOOM) && (zoom - Fl::event_dy() * 0.01 > MINZOOM)) zoom -= Fl::event_dy() * 0.01;
-			cout << "miao" << endl;
 			break;
 		
 		case FL_KEYDOWN:

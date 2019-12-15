@@ -6,9 +6,6 @@
 #define PI 3.14159265359
 
 class Particle {
-private:
-	float random(float min, float max) { return ((float)rand() / RAND_MAX) * (max - min) + min; }
-
 public:
 	bool active = true;
 	float mass, radius, angle;
@@ -21,9 +18,6 @@ public:
 	void positionStep (float, Vector3&);
 	void velocityStep (float, Vector3&);
 	void angularStep (float);
-	void initialize ();
-	void energyInitialize (float, float);
-	void momentumInitialize (float);
 };
 
 #endif /* PARTICLE_H */
