@@ -171,9 +171,9 @@ int Frame::handle(int event) {
 				}
 			}
 			
-			if(!asteroids)
+			if(!asteroids){
 				if (keycode == SPACE) form->sim->togglePause(); // Spacebar
-
+			}
 			if(keycode == X){ //Button X
 				vision3d = !vision3d;
 				if(vision3d)

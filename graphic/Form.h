@@ -20,7 +20,7 @@ private:
 	int floatToInt(float num, int afterComma) { return round(num * pow(10, afterComma)); }
 	void CreateMyWindow();
 public:
-	static Simulation* sim;
+	Simulation* sim;
 	Form(Simulation*);
 	
 	void setSimulation(Simulation*);

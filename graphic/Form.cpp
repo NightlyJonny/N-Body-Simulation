@@ -3,7 +3,6 @@
 //Declaration of static members
 Fl_Window* Form::form;
 Frame* Form::scene;
-Simulation* Form::sim;
 
 Form::Form(Simulation* sim) {
 	Form::sim = sim;
@@ -46,7 +45,7 @@ void Form::CreateMyWindow(void) {
 }
 
 void Form::setSimulation(Simulation* sim){
-
+	Form::sim = sim;
 	getFrame()->setSimulation(sim);
 }
 
