@@ -1,18 +1,10 @@
-#include <vector>
-#include <math.h>
-#include <FL/gl.h>
-#include <FL/glu.h>
+#include "Drawer.h"
 
 void drawPrSphere(double r, int slices, int stacks);
-
-#include "Drawer.h"
 
 Drawer::Drawer() {
 
 	int i = 0;
-	glutInit(&i, NULL);
-	
-	quadratic = gluNewQuadric();
 }
 
 /*
@@ -33,13 +25,8 @@ void Drawer::drawSphere(GLfloat x, GLfloat y, GLfloat z, GLfloat radius, GLfloat
 		glColor3f(1.0, 1.0, 1.0);
 		glTranslatef(x, y, z);
 		glRotatef(angle * 180 / M_PI, xRot, yRot, zRot);
-		drawPrSphere(radius, 14, 20);
+		drawPrSphere(radius, 20, 20);
 
-		glColor3f(1.0, 0, 0);
-		glRotatef(90, 1, 0, 0);
-		gluCylinder(quadratic, ray, ray, height, 32, 1);
-		glRotatef(90, 0, 1, 0);
-		gluCylinder(quadratic, ray, ray, height, 32, 1);
 	glPopMatrix();
 }
 
@@ -100,26 +87,50 @@ void Drawer::setSimulation(Simulation* sim){
 
 void drawPrSphere(double r, int slices, int stacks) {
     int i, j;
+	glBegin(GL_QUAD_STRIP);
     for(i = 0; i <= slices; i++) {
-        double lat0 = M_PI * (-0.5 + (double) (i - 1) / slices);
+        double lat0 = M_PI * (-0.5 + (double) (i) / slices);
         double z0  = sin(lat0);
         double zr0 =  cos(lat0);
-
-        double lat1 = M_PI * (-0.5 + (double) i / slices);
+        double lat1 = M_PI * (-0.5 + (double) (i - 1) / slices);
         double z1 = sin(lat1);
         double zr1 = cos(lat1);
 
-        glBegin(GL_QUAD_STRIP);
+        
         for(j = 0; j <= stacks; j++) {
             double lng = 2 * M_PI * (double) (j - 1) / stacks;
             double x = cos(lng);
             double y = sin(lng);
 
-            glNormal3f(-x * zr0, -y * zr0, -z0);
+            glNormal3f(x * zr0, y * zr0, z0);
             glVertex3f(r * x * zr0, r * y * zr0, r * z0);
-            glNormal3f(-x * zr1, -y * zr1, -z1);
+            glNormal3f(x * zr1, y * zr1, z1);
             glVertex3f(r * x * zr1, r * y * zr1, r * z1);
         }
-        glEnd();
+        
     }
+	glEnd();
+
+	glColor3f(1.0, 0, 0);
+
+	float distance = 0.01;
+	glBegin(GL_QUAD_STRIP);
+	for(double angle = 0; angle < 2 * M_PI; angle += 0.01){
+		glNormal3f(cos(angle), sin(angle), 0);
+		glVertex3f(r * cos(angle), r * sin(angle), distance);
+		glNormal3f(cos(angle), sin(angle), 0);
+		glVertex3f(r * cos(angle), r * sin(angle), -distance);
+	}
+
+	glEnd();
+
+	glBegin(GL_QUAD_STRIP);
+	for(double angle = 0; angle < 2 * M_PI; angle += 0.01){
+		glNormal3f(sin(angle), 0, cos(angle));
+		glVertex3f(r * sin(angle), distance, r * cos(angle));
+		glNormal3f(sin(angle), 0, cos(angle));
+		glVertex3f(r * sin(angle), -distance, r * cos(angle));
+	}
+
+	glEnd();
 }

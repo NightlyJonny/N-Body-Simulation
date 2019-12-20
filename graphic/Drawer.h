@@ -3,8 +3,6 @@
 #define DRAW_HPP
 
 #include <FL/gl.h>
-#include <FL/glu.h>
-#include <GL/glut.h>	  
 #include <math.h>
 #include "../Simulation.h"
 #define PI 3.14159265359
@@ -16,8 +14,6 @@ private:
 	int NParticle;
 	bool asteroids = false;
 	GLfloat angle = 0, x = 0, y = 0;
-	//This is useful for the creation of the cylinder
-	GLUquadricObj *quadratic;
 
 public:
 	Drawer();
