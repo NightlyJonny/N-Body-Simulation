@@ -6,7 +6,7 @@ void sigHandler(int sig) {
 	stopped = true;
 }
 
-Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool fl, unsigned long int seed) {
+Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool fl, unsigned long int seed, float E0) {
 	signal(SIGINT, sigHandler);
 	srand(seed);
 
@@ -41,7 +41,7 @@ Simulation::Simulation(string outFN, unsigned int duration, unsigned int frameSt
 			outFileName = outFileName.substr(0, outFileName.length() - 4);
 		}
 		else {
-			energyInitialize(particles, NPARTICLE, 0);
+			energyInitialize(particles, NPARTICLE, E0);
 		}
 	
 		outFile.open(outFileName.c_str(), ios::out | ios::binary | (resuming ? ios::app : ios::trunc));
@@ -167,9 +167,10 @@ void Simulation::core() {
 		}
 
 		frames++;
+		if (!stopped) printProgress(frames, DURATION*FRAMERATE);
 		auto end = chrono::high_resolution_clock::now();
 		int deltaTime = chrono::duration_cast<chrono::microseconds>(end - start).count();
-		// debugText = to_string(1000000 / deltaTime) + " fps";
+		debugText = to_string(1000000 / deltaTime) + " fps";
 		if (frameLimit) {
 			if (deltaTime < targetDt) {
 				this_thread::sleep_for(chrono::microseconds(targetDt - deltaTime));
@@ -194,29 +195,52 @@ void Simulation::randomInitialize (Particle* particles, int NPARTICLE) {
 }
 
 void Simulation::energyInitialize (Particle* particles, int NPARTICLE, float E0) {
+	cout << "Initializing system with a target energy..." << endl;
 	float R = cbrt( (3*NPARTICLE) / (4*PI*INITDENSITY) );
-	for (int p = 0; p < NPARTICLE; p++) {
-		Vector3 rpVector (random(-R, R), random(-R, R), random(-R, R));
-		while (rpVector.norm() > R) {
-			rpVector = Vector3(random(-R, R), random(-R, R), random(-R, R));
+	float targetv2 = -1;
+	while ((targetv2 < 0) && !stopped) {
+		int tried = 0;
+		while ((targetv2 < 0) && !stopped && tried < 1000) {
+			for (int p = 0; p < NPARTICLE; p++) {
+
+				// Positions
+				Vector3 rpVector (random(-R, R), random(-R, R), random(-R, R));
+				float rnorm = rpVector.norm();
+				while (rnorm > R) {
+					rpVector = Vector3(random(-R, R), random(-R, R), random(-R, R));
+					rnorm = rpVector.norm();
+				}
+				particles[p].position = rpVector;
+
+				// Masses and radii
+				particles[p].mass = random(0.5, 2);
+				particles[p].radius = random(0.1, 0.2);
+			}
+			targetv2 = 2 * (E0 - getPotential(particles, NPARTICLE)) / (1.25 * NPARTICLE);
+			tried ++;
 		}
-		particles[p].position = rpVector;
-		particles[p].mass = random(0.5, 2);
-		particles[p].radius = random(0.1, 0.2);
+		if (tried >= 1000) {
+			cout << "Failed to find an appropriate kinetic energy, making universe 10% smaller: R = " << R << "..." << endl;
+			R *= 0.9;
+		}
 	}
 
+	// Velocities
+	float curEnergy = 0;
 	do {
-		float targetv2 = 2 * (E0 - getPotential(particles, NPARTICLE)) / (1.25 * NPARTICLE);
 		for (int p = 0; p < NPARTICLE; p++) {
-			particles[p].velocity = particles[p].position.versor() * sqrt(random(0, 2*targetv2));
+			particles[p].velocity = particles[p].position.versor() * sqrtf(random(0.8*targetv2, 1.2*targetv2));
 		}
-	} while (abs(getEnergy(particles, NPARTICLE) - E0) > INITTHRESHOLD);
+		curEnergy = getEnergy(particles, NPARTICLE);
+	} while ((abs(curEnergy - E0) > INITTHRESHOLD*(abs(E0)+1))  && !stopped);
+	cout << "System initialized with E = " << curEnergy << endl;
+	// return curEnergy;
 }
 
 float Simulation::getKinetic(Particle* particles, int NPARTICLE) {
 	float K = 0;
 	for (int p = 0; p < NPARTICLE; p++){
-		K += 0.5 * particles[p].mass * pow(particles[p].velocity.norm(), 2) + 0.2 * particles[p].mass * pow(particles[p].radius * particles[p].omega.norm(), 2);
+		if (particles[p].active) K += 0.5 * particles[p].mass * pow(particles[p].velocity.norm(), 2) + 0.2 * particles[p].mass * pow(particles[p].radius * particles[p].omega.norm(), 2);
 	}
 	return K;
 }
@@ -224,9 +248,9 @@ float Simulation::getKinetic(Particle* particles, int NPARTICLE) {
 float Simulation::getPotential(Particle* particles, int NPARTICLE) {
 	float U = 0;
 	for (int p1 = 0; p1 < NPARTICLE; p1++){
-		for (int p2 = 0; p2 < NPARTICLE; p2++){
-			if (p1 == p2) continue;
-			U -= (particles[p1].mass * particles[p2].mass) / (particles[p1].position - particles[p2].position).norm();
+		if (!particles[p1].active) continue;
+		for (int p2 = p1 + 1; p2 < NPARTICLE; p2++){
+			if (particles[p2].active) U -= (particles[p1].mass * particles[p2].mass) / (particles[p1].position - particles[p2].position).norm();
 		}
 	}
 	return U;

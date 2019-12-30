@@ -2,20 +2,17 @@
 #include <fstream>
 #include <string>
 #include <signal.h>
-#define FRAMERATE 60
+#define FRAMERATE 30
 #define EFACTOR 0.2
 #define KFACTOR 0 // 0.005
 #define SCHEMEORDER 4
 #define FUSIONTHRESHOLD 0.2
-#define ENERGY0 -100
-#define INITTHRESHOLD 0.01
+#define INITTHRESHOLD 0.05
 #define INITDENSITY 0.5
 #define PI 3.14159265359
 
-#define DATAPERIOD 10 // 0 to disable distributions output
-#define DATADIR "Distributions/"
-#define MASSBIN 0.2
-#define ENERGYBIN 100
+#define DATAPERIOD 30 // 0 to disable distributions output
+#define BASEDATADIR "Distributions/"
 using namespace std;
 
 __host__ __device__ float norm (float x, float y, float z) {
@@ -23,34 +20,35 @@ __host__ __device__ float norm (float x, float y, float z) {
 	return sqrtf(x*x + y*y + z*z);
 }
 
-float getKinetic (float* mass, float* Vx, float* Vy, float* Vz, float* radius, float* Wx, float* Wy, float* Wz, unsigned int NPARTICLE) {
+float getKinetic (bool* active, float* mass, float* Vx, float* Vy, float* Vz, float* radius, float* Wx, float* Wy, float* Wz, unsigned int NPARTICLE) {
 	float K = 0;
 	for (int p = 0; p < NPARTICLE; p++) {
-		K += 0.5 * mass[p] * (Vx[p]*Vx[p] + Vy[p]*Vy[p] + Vz[p]*Vz[p]) + 0.2 * mass[p] * powf(radius[p], 2) * (Wx[p]*Wx[p] + Wy[p]*Wy[p] + Wz[p]*Wz[p]);
+		if (active[p]) K += 0.5 * mass[p] * (Vx[p]*Vx[p] + Vy[p]*Vy[p] + Vz[p]*Vz[p]) + 0.2 * mass[p] * radius[p]*radius[p] * (Wx[p]*Wx[p] + Wy[p]*Wy[p] + Wz[p]*Wz[p]);
 	}
 	return K;
 }
 
-float getPotential (float* mass, float* Px, float* Py, float* Pz, unsigned int NPARTICLE) {
+float getPotential (bool* active, float* mass, float* Px, float* Py, float* Pz, unsigned int NPARTICLE) {
 	float U = 0;
 	for (int p1 = 0; p1 < NPARTICLE; p1++) {
+		if (!active[p1]) continue;
 		for (int p2 = p1 + 1; p2 < NPARTICLE; p2++) {
-			U -= 2 * mass[p1] * mass[p2] / norm(Px[p1]-Px[p2], Py[p1]-Py[p2], Pz[p1]-Pz[p2]);
+			if (active[p2]) U -= 2 * mass[p1] * mass[p2] / norm(Px[p1]-Px[p2], Py[p1]-Py[p2], Pz[p1]-Pz[p2]);
 		}
 	}
 	return U;
 }
 
-float getEnergy (float* mass, float* Px, float* Py, float* Pz, float* Vx, float* Vy, float* Vz, float* radius, float* Wx, float* Wy, float* Wz, unsigned int NPARTICLE) {
+float getEnergy (bool* active, float* mass, float* Px, float* Py, float* Pz, float* Vx, float* Vy, float* Vz, float* radius, float* Wx, float* Wy, float* Wz, unsigned int NPARTICLE) {
 
-	return getKinetic(mass, Vx, Vy, Vz, radius, Wx, Wy, Wz, NPARTICLE) + getPotential(mass, Px, Py, Pz, NPARTICLE);
+	return getKinetic(active, mass, Vx, Vy, Vz, radius, Wx, Wy, Wz, NPARTICLE) + getPotential(active, mass, Px, Py, Pz, NPARTICLE);
 }
 
-float getSingleEnergy (float* mass, float* Px, float* Py, float* Pz, float* Vx, float* Vy, float* Vz, float* radius, float* Wx, float* Wy, float* Wz, unsigned int NPARTICLE, int p) {
+float getSingleEnergy (bool* active, float* mass, float* Px, float* Py, float* Pz, float* Vx, float* Vy, float* Vz, float* radius, float* Wx, float* Wy, float* Wz, unsigned int NPARTICLE, int p) {
 	float E = 0;
 	E += 0.5 * mass[p] * (Vx[p]*Vx[p] + Vy[p]*Vy[p] + Vz[p]*Vz[p]) + 0.2 * mass[p] * powf(radius[p], 2) * (Wx[p]*Wx[p] + Wy[p]*Wy[p] + Wz[p]*Wz[p]);
 	for (int p2 = 0; p2 < NPARTICLE; p2++) {
-		if (p == p2) continue;
+		if ((p == p2) || !active[p2]) continue;
 		E -= mass[p] * mass[p2] / norm(Px[p]-Px[p2], Py[p]-Py[p2], Pz[p]-Pz[p2]);
 	}
 	return E;
@@ -66,6 +64,20 @@ void saveFrame (ofstream& outFile, float* radius, float* Px, float* Py, float* P
 	outFile.write((char *)Wx, particleNumber * sizeof(float));
 	outFile.write((char *)Wy, particleNumber * sizeof(float));
 	outFile.write((char *)Wz, particleNumber * sizeof(float));
+}
+
+void saveSize (ofstream& outFile, float t, float* Px, float* Py, float* Pz, float* mass, int particleNumber, bool* active) {
+	float curSize = 0, totalWeight = 0;
+	for (int p1 = 0; p1 < particleNumber; p1++) {
+		if (!active[p1]) continue;
+		for (int p2 = p1+1; p2 < particleNumber; p2++) {
+			if (!active[p2]) continue;
+			curSize += norm(Px[p2]-Px[p1], Py[p2]-Py[p1], Pz[p2]-Pz[p1]) * mass[p1]*mass[p2];
+			totalWeight += mass[p1]*mass[p2];
+		}
+	}
+	curSize /= totalWeight;
+	outFile << t << '\t' << curSize << '\n';
 }
 
 float random (float min, float max) {
@@ -117,7 +129,7 @@ void sigHandler (int sig) {
 	stopped = true;
 }
 
-void randomInitialize (float* mass, float* radius, float* angle, float* Px, float* Py, float* Pz, float* Vx, float* Vy, float* Vz, float* Wx, float* Wy, float* Wz, bool* active, unsigned int NPARTICLE) {
+void randomInitialize (float* mass, float* radius, float* Px, float* Py, float* Pz, float* Vx, float* Vy, float* Vz, float* Wx, float* Wy, float* Wz, unsigned int NPARTICLE) {
 	float R = cbrt( (3*NPARTICLE) / (4*PI*INITDENSITY) );
 	for (int p = 0; p < NPARTICLE; p++) {
 
@@ -150,41 +162,53 @@ void randomInitialize (float* mass, float* radius, float* angle, float* Px, floa
 	}
 }
 
-void energyInitialize (float* mass, float* radius, float* angle, float* Px, float* Py, float* Pz, float* Vx, float* Vy, float* Vz, float* Wx, float* Wy, float* Wz, bool* active, unsigned int NPARTICLE, float E0) {
+float energyInitialize (float* mass, float* radius, float* Px, float* Py, float* Pz, float* Vx, float* Vy, float* Vz, float* Wx, float* Wy, float* Wz, bool* active, unsigned int NPARTICLE, float E0) {
 	cout << "Initializing system with a target energy..." << endl;
 	float R = cbrt( (3*NPARTICLE) / (4*PI*INITDENSITY) );
-	for (int p = 0; p < NPARTICLE; p++) {
+	float targetv2 = -1;
+	while ((targetv2 < 0) && !stopped) {
+		int tried = 0;
+		while ((targetv2 < 0) && !stopped && tried < 1000) {
+			for (int p = 0; p < NPARTICLE; p++) {
 
-		// Positions
-		float rx = random(-R, R), ry = random(-R, R), rz = random(-R, R), rnorm = norm(rx, ry, rz);
-		while (rnorm > R) {
-			rx = random(-R, R);
-			ry = random(-R, R);
-			rz = random(-R, R);
-			rnorm = norm(rx, ry, rz);
+				// Positions
+				float rx = random(-R, R), ry = random(-R, R), rz = random(-R, R), rnorm = norm(rx, ry, rz);
+				while (rnorm > R) {
+					rx = random(-R, R);
+					ry = random(-R, R);
+					rz = random(-R, R);
+					rnorm = norm(rx, ry, rz);
+				}
+				Px[p] = rx;
+				Py[p] = ry;
+				Pz[p] = rz;
+
+				// Masses and radii
+				mass[p] = random(0.5, 2);
+				radius[p] = random(0.1, 0.2);
+			}
+			targetv2 = 2 * (E0 - getPotential(active, mass, Px, Py, Pz, NPARTICLE)) / (1.25 * NPARTICLE);
+			tried ++;
 		}
-		Px[p] = rx;
-		Py[p] = ry;
-		Pz[p] = rz;
-
-		// Masses and radii
-		mass[p] = random(0.5, 2);
-		radius[p] = random(0.1, 0.2);
+		if (tried >= 1000) {
+			cout << "Failed to find an appropriate kinetic energy, making universe 10% smaller: R = " << R << "..." << endl;
+			R *= 0.9;
+		}
 	}
 
 	// Velocities
 	float curEnergy = 0;
 	do {
-		float targetv2 = 2 * (E0 - getPotential(mass, Px, Py, Pz, NPARTICLE)) / (1.25 * NPARTICLE);
 		for (int p = 0; p < NPARTICLE; p++) {
-			float rnorm = norm(Px[p], Py[p], Pz[p]), rvn = sqrtf(random(0, 2*targetv2));
+			float rnorm = norm(Px[p], Py[p], Pz[p]), rvn = sqrtf(random(0.8*targetv2, 1.2*targetv2));
 			Vx[p] = (Px[p]/rnorm) * rvn;
 			Vy[p] = (Py[p]/rnorm) * rvn;
 			Vz[p] = (Pz[p]/rnorm) * rvn;
 		}
-		curEnergy = getEnergy(mass, Px, Py, Pz, Vx, Vy, Vz, radius, Wx, Wy, Wz, NPARTICLE);
-	} while ((abs(curEnergy - E0) > INITTHRESHOLD*NPARTICLE)  && !stopped);
+		curEnergy = getEnergy(active, mass, Px, Py, Pz, Vx, Vy, Vz, radius, Wx, Wy, Wz, NPARTICLE);
+	} while ((abs(curEnergy - E0) > INITTHRESHOLD*abs(E0))  && !stopped);
 	cout << "System initialized with E = " << curEnergy << endl;
+	return curEnergy;
 }
 
 __global__ void computeForces (float* Fx, float* Fy, float* Fz, float* Px, float* Py, float* Pz, float* mass, int NPARTICLE, bool* active) {
@@ -302,7 +326,8 @@ int main(int argc, char** argv) {
 	srand(time(0) * rand());
 
 	string outFileName;
-	unsigned int DURATION = 60, FRAMESTEP = 10, NPARTICLE = 500; // Optional terminal paramenters IN THIS ORDER!
+	unsigned int DURATION = 60, FRAMESTEP = 10, NPARTICLE = 500;
+	float ENERGY0 = 0, realE0 = 0;
 	if (argc > 1) outFileName = string(argv[argc-1]);
 	else {
 		cerr << "You must specify an output or save file.\nUsage: ./core [DURATION] [FRAMESTEP] [NPARTICLE] \"OutputFile.txt\"\nor\n./core \"ProgressData.dat\"" << endl;
@@ -310,14 +335,16 @@ int main(int argc, char** argv) {
 	}
 	bool resuming = outFileName.substr(outFileName.length()-4, 4).compare(string(".dat")) == 0;
 	if (!resuming) {
-		if (argc > 2) NPARTICLE = stoi(argv[argc-2]);
-		if (argc > 3) FRAMESTEP = stoi(argv[argc-3]);
-		if (argc > 4) DURATION = stoi(argv[argc-4]);
+		if (argc > 2) ENERGY0 = stof(argv[argc-2]);
+		if (argc > 3) NPARTICLE = stoi(argv[argc-3]);
+		if (argc > 4) FRAMESTEP = stoi(argv[argc-4]);
+		if (argc > 5) DURATION = stoi(argv[argc-5]);
 	}
 	else {
 		if (argc > 2) DURATION = stoi(argv[argc-2]);
 	}
 	if (DURATION == 0) DURATION = UINT_MAX;
+	ENERGY0 *= NPARTICLE;
 	
 	float *mass, *radius, *Px, *Py, *Pz, *Vx, *Vy, *Vz, *angle, *Wx, *Wy, *Wz, *Fx, *Fy, *Fz, *Sx, *Sy, *Sz, *Jx, *Jy, *Jz;
 	bool *active;
@@ -352,6 +379,16 @@ int main(int argc, char** argv) {
 	cudaMallocManaged(&active, NPARTICLE*sizeof(bool));
 
 	// Initialization objects
+	for (int p = 0; p < NPARTICLE; p++) {
+		active[p] = true;
+		angle[p] = 0;
+
+		Fx[p] = -KFACTOR * Px[p];
+		Fy[p] = -KFACTOR * Py[p];
+		Fz[p] = -KFACTOR * Pz[p];
+
+		Sx[p] = Sy[p] = Sz[p] = Jx[p] = Jy[p] = Jz[p] = 0;
+	}
 	if (resuming) {
 		cout << "Save file specified, restoring progress..." << endl;
 		ifstream inFile (outFileName.c_str(), ios::in | ios::binary);
@@ -381,18 +418,8 @@ int main(int argc, char** argv) {
 		outFileName = outFileName.substr(0, outFileName.length()-4);
 	}
 	else {
-		// randomInitialize(mass, radius, angle, Px, Py, Pz, Vx, Vy, Vz, Wx, Wy, Wz, active, NPARTICLE);
-		energyInitialize(mass, radius, angle, Px, Py, Pz, Vx, Vy, Vz, Wx, Wy, Wz, active, NPARTICLE, ENERGY0);
-	}
-	for (int p = 0; p < NPARTICLE; p++) {
-		active[p] = true;
-		angle[p] = 0;
-
-		Fx[p] = -KFACTOR * Px[p];
-		Fy[p] = -KFACTOR * Py[p];
-		Fz[p] = -KFACTOR * Pz[p];
-
-		Sx[p] = Sy[p] = Sz[p] = Jx[p] = Jy[p] = Jz[p] = 0;
+		// randomInitialize(mass, radius, Px, Py, Pz, Vx, Vy, Vz, Wx, Wy, Wz, NPARTICLE);
+		realE0 = energyInitialize(mass, radius, Px, Py, Pz, Vx, Vy, Vz, Wx, Wy, Wz, active, NPARTICLE, ENERGY0);
 	}
 
 	// Output file initialization
@@ -402,6 +429,11 @@ int main(int argc, char** argv) {
 		return 2;
 	}
 	if (!resuming) outFile.write((char *)(&NPARTICLE), sizeof(unsigned int));
+
+	const string DATADIR = string(BASEDATADIR) + string("E") + to_string(realE0) + string("/");
+	system( (string("mkdir -p \"") + DATADIR + string("\"")).c_str() );
+	string dataFileName = string(DATADIR) + string("size.dat");
+	ofstream sizeFile (dataFileName.c_str(), ios::out | ios::trunc);
 
 	float cs[] = {0, 0, 0, 0};
 	float cd[] = {0, 0, 0, 0};
@@ -441,70 +473,41 @@ int main(int argc, char** argv) {
 
 		}
 		saveFrame(outFile, radius, Px, Py, Pz, angle, Wx, Wy, Wz, NPARTICLE, active);
+		saveSize(sizeFile, (float)frames / FRAMERATE, Px, Py, Pz, mass, NPARTICLE, active);
+
 		if ((DATAPERIOD > 0) && (frames % (DATAPERIOD*FRAMERATE) == 0)) {
 
-			// Mass distribution
-			float maxMass = mass[0];
-			for (int p = 1; p < NPARTICLE; p++) {
-				if (mass[p] > maxMass) maxMass = mass[p];
-			}
-			const int mbins = round(maxMass/MASSBIN) + 1;
-			float* x = new float[mbins];
-			int* y = new int[mbins];
-			for (int b = 0; b < mbins; b++) {
-				x[b] = (b+0.5) * MASSBIN;
-				y[b] = 0;
-			}
+			int activeParticles = 0;
 			for (int p = 0; p < NPARTICLE; p++) {
-				y[(int)(mass[p] / MASSBIN)] ++ ;
+				if (active[p]) activeParticles ++;
 			}
 
-			string mdataFileName = string(DATADIR) + string("mass_E") + to_string(ENERGY0) + string("_") + to_string(DATAPERIOD * (frames/(DATAPERIOD*FRAMERATE))) + string("s.txt");
-			ofstream mdFile (mdataFileName.c_str(), ios::out | ios::trunc);
-			for (int b = 0; b < mbins; b++) {
-				mdFile << x[b] << '\t' << y[b] << '\n';
+			// Mass distribution
+			dataFileName = string(DATADIR) + string("mass_E") + to_string(realE0) + string("_") + to_string(DATAPERIOD * (frames/(DATAPERIOD*FRAMERATE))) + string("s.dat");
+			ofstream mdFile (dataFileName.c_str(), ios::out | ios::trunc | ios::binary);
+			mdFile.write((char *)(&activeParticles), sizeof(int));
+			for (int p = 0; p < NPARTICLE; p++) {
+				if (active[p]) mdFile.write((char *)(mass+p), sizeof(float));
 			}
 			mdFile.close();
 
 			// Energy distribution
-			auto Ep = [=] (int p) { return getSingleEnergy(mass, Px, Py, Pz, Vx, Vy, Vz, radius, Wx, Wy, Wz, NPARTICLE, p); };
-			float maxEnergy = Ep(0);
-			for (int p = 1; p < NPARTICLE; p++) {
-				if (Ep(p) > maxEnergy) maxEnergy = Ep(p);
-			}
-			float minEnergy = Ep(0);
-			for (int p = 1; p < NPARTICLE; p++) {
-				if (Ep(p) < minEnergy) minEnergy = Ep(p);
-			}
-
-			const int ebins = (int)((maxEnergy - minEnergy)/ENERGYBIN) + 2;
-			cout << minEnergy << " - " << maxEnergy << ": " << ebins << endl;
-			x = new float[ebins];
-			y = new int[ebins];
-			for (int b = 0; b < ebins; b++) {
-				x[b] = (b + (int)(minEnergy/ENERGYBIN)) * ENERGYBIN;
-				y[b] = 0;
-			}
+			auto Ep = [=] (int p) { return getSingleEnergy(active, mass, Px, Py, Pz, Vx, Vy, Vz, radius, Wx, Wy, Wz, NPARTICLE, p); };
+			dataFileName = string(DATADIR) + string("energy_E") + to_string(realE0) + string("_") + to_string(DATAPERIOD * (frames/(DATAPERIOD*FRAMERATE))) + string("s.dat");
+			ofstream edFile (dataFileName.c_str(), ios::out | ios::trunc | ios::binary);
+			edFile.write((char *)(&activeParticles), sizeof(int));
 			for (int p = 0; p < NPARTICLE; p++) {
-				float curE = Ep(p);
-				int index = (int)((curE-minEnergy) / ENERGYBIN);
-				if (curE > 0) index ++;
-				cout << curE << " -> " << x[index] << endl;
-				y[index] ++ ;
-			}
-
-			string edataFileName = string(DATADIR) + string("energy_E") + to_string(ENERGY0) + string("_") + to_string(DATAPERIOD * (frames/(DATAPERIOD*FRAMERATE))) + string("s.txt");
-			ofstream edFile (edataFileName.c_str(), ios::out | ios::trunc);
-			for (int b = 0; b < ebins; b++) {
-				edFile << x[b] << '\t' << y[b] << '\n';
+				float curEp = Ep(p);
+				if (active[p]) edFile.write((char *)(&curEp), sizeof(float));
 			}
 			edFile.close();
 		}
 		frames ++;
-		// if (!stopped) printProgress(frames, DURATION*FRAMERATE);
+		if (!stopped) printProgress(frames, DURATION*FRAMERATE);
 	}	
 	cout << "\n";
 	outFile.close();
+	sizeFile.close();
 	// saveProgress (outFileName, NPARTICLE, FRAMESTEP, active, radius, mass, Px, Py, Pz, angle, Wx, Wy, Wz, Vx, Vy, Vz);
 
 	cudaFree(mass);

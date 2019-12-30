@@ -28,6 +28,7 @@ struct SettingsWidget {
 	Fl_Check_Button* outChk;
 	Fl_Input* seedTxt;
 	Fl_Check_Button* randomChk;
+	Fl_Input* energyTxt;
 };
 
 void idle_cb(void*) {
@@ -35,9 +36,9 @@ void idle_cb(void*) {
 	form->getFrame()->redraw();
 }
 
-void start(bool gui, string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, unsigned long int seed) {
+void start(bool gui, string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, unsigned long int seed, float initialEnergy) {
 
-	sim = new Simulation(outFile, duration, frameStep, particleNumber, gui, seed);
+	sim = new Simulation(outFile, duration, frameStep, particleNumber, gui, seed, initialEnergy);
 	std::thread heavyWork([]() { sim->core(); });
 
 	//Create and execute the graphic part
@@ -64,6 +65,7 @@ void start_cb(Fl_Widget* o, void* settings) {
 	unsigned int frameStep = stoi(sw->fsTxt->value());
 	unsigned int particleNumber = stoi(sw->pnTxt->value());
 	unsigned long int seed = stoi(sw->seedTxt->value());
+	float initialEnergy = stof(sw->energyTxt->value());
 	seed = (sw->randomChk->value() ? time(0) * rand() : seed);
 	string outFile = string(sw->outFileTxt->value());
 
@@ -71,17 +73,17 @@ void start_cb(Fl_Widget* o, void* settings) {
 		return;
 
 	if(sw->typeChoice->value() == 2){
-		string str = "./CUDA/coreGPU " + to_string(duration) + " " + to_string(frameStep) + " " + to_string(particleNumber) + " " + outFile;
+		string str = "./CUDA/coreGPU " + to_string(duration) + " " + to_string(frameStep) + " " + to_string(particleNumber) + " " + to_string(initialEnergy) + " " + outFile;
 		int i = system(str.c_str());
 		return;
 	}
 
 	if(sw->typeChoice->value() == 3){
-		start(gui, outFile, 0, 0, 0, 0);
+		start(gui, outFile, 0, 0, 0, 0, 0);
 		return;
 	}
 
-	start(gui, outFile, duration, frameStep, particleNumber, seed);
+	start(gui, outFile, duration, frameStep, particleNumber, seed, initialEnergy*particleNumber);
 }
 
 void quit_cb(Fl_Widget* o, void*) {
@@ -119,6 +121,7 @@ void choice_cb(Fl_Widget* o, void* settings) {
 		sw->pnTxt->deactivate();
 		sw->seedTxt->deactivate();
 		sw->randomChk->deactivate();
+		sw->energyTxt->deactivate();
 	}
 	else {
 		sw->outFileTxt->label("Output file:");
@@ -131,6 +134,7 @@ void choice_cb(Fl_Widget* o, void* settings) {
 			sw->seedTxt->deactivate();
 		else
 			sw->seedTxt->activate();
+		sw->energyTxt->activate();
 	}
 }
 
@@ -151,12 +155,12 @@ int createWindow(){
 
 	SettingsWidget* setWidgets = new SettingsWidget();
 
-	Fl_Window win(400, 400, "Simulation Settings");
+	Fl_Window win(400, 410, "Simulation Settings");
 
 	win.begin();
 
-		Fl_Return_Button startBtn (310, 360, 80, 30, "Start");
-		Fl_Button quitBtn (10, 360, 80, 30, "&Quit");
+		Fl_Return_Button startBtn (310, 370, 80, 30, "Start");
+		Fl_Button quitBtn (10, 370, 80, 30, "&Quit");
 
 		Fl_Choice typeChoice (140, 20, 100, 30, "Mode:");
 		setWidgets->typeChoice = &typeChoice;
@@ -193,6 +197,10 @@ int createWindow(){
 		Fl_Check_Button randomChk (290, 270, 90, 30, "Random");
 		randomChk.value(true);
 		setWidgets->randomChk = &randomChk;
+
+		Fl_Input energyTxt (140, 320, 140, 30, "System E0/N:");
+		energyTxt.value("0");
+		setWidgets->energyTxt = &energyTxt;
 
 	win.end();
 	startBtn.callback(start_cb, setWidgets);

@@ -11,11 +11,11 @@
 #include <climits>
 #include "Particle.h"
 #include "Vector3.h"
-#define FRAMERATE 60
+#define FRAMERATE 30
 #define EFACTOR 0.2
 #define KFACTOR 0 // 0.01
 #define FUSIONTHRESHOLD 0.2
-#define INITTHRESHOLD 0.1
+#define INITTHRESHOLD 0.01
 #define INITDENSITY 0.1
 #define PI 3.14159265359
 using namespace std;
@@ -33,7 +33,7 @@ private:
 	float random(float min, float max) { return ((float)rand() / RAND_MAX) * (max - min) + min; }
 
 public:
-	Simulation(string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool frameLimit, unsigned long int seed);
+	Simulation(string outFile, unsigned int duration, unsigned int frameStep, unsigned int particleNumber, bool frameLimit, unsigned long int seed, float E0);
 	void core();
 	void randomInitialize (Particle* particles, int NPARTICLE);
 	void energyInitialize (Particle* particles, int NPARTICLE, float E0);
